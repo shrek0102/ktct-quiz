@@ -181,6 +181,16 @@ const App = {
   },
 
   bindEvents() {
+    // Chặn pinch-to-zoom và multi-touch gestures trên mobile / iOS PWA
+    document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
+    document.addEventListener('gesturechange', (e) => e.preventDefault(), { passive: false });
+    document.addEventListener('gestureend', (e) => e.preventDefault(), { passive: false });
+    document.addEventListener('touchmove', (e) => {
+      if (e.touches && e.touches.length > 1) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+
     document.addEventListener('click', (e) => {
       const el = e.target.closest('[data-action]');
       if (el) {
@@ -546,16 +556,20 @@ const App = {
     // 5. Vẽ lưới 1..N các câu hỏi (ở trên)
     this.renderSetupGrid();
 
-    // 6. Cập nhật nút bắt đầu
-    const startBtn = $('#btn-start');
+    // 6. Cập nhật nút bắt đầu (cả desktop và mobile dock)
+    let startText = '';
     if (this.setupMode === 'exam') {
       const mins = parseInt($('#setup-exam-minutes').value, 10) || 20;
-      startBtn.textContent = `Bắt đầu thi thử (${selCount} câu · ${mins}p)`;
+      startText = `Bắt đầu thi thử (${selCount} câu · ${mins}p)`;
     } else {
-      startBtn.textContent = `Bắt đầu luyện tập (${selCount} câu)`;
+      startText = `Bắt đầu luyện tập (${selCount} câu)`;
     }
+    const startDisabled = (selCount === 0);
 
-    startBtn.disabled = (selCount === 0);
+    document.querySelectorAll('#btn-start, #dock-btn-start').forEach(btn => {
+      btn.textContent = startText;
+      btn.disabled = startDisabled;
+    });
 
     // Tự động lưu trạng thái thiết lập để không bị mất khi reload
     this.saveSetupPrefs();
@@ -739,6 +753,7 @@ const App = {
     // Chuyển sang Màn hình làm bài (Quiz View) kèm hiệu ứng chuyển cảnh mượt mà
     this.view = 'quiz';
     document.body.dataset.view = 'quiz';
+    document.body.classList.remove('palette-open');
     const setupView = $('#view-setup');
     const quizView = $('#view-quiz');
     setupView.hidden = true;
@@ -867,24 +882,33 @@ const App = {
       box.appendChild(btn);
     });
 
-    // Navigation buttons
-    $('#btn-prev').disabled = (this.index === 0);
+    // Navigation buttons (cả desktop và mobile dock)
+    const prevDisabled = (this.index === 0);
+    document.querySelectorAll('#btn-prev, #dock-btn-prev').forEach(b => {
+      b.disabled = prevDisabled;
+    });
+
     const posStr = `${this.index + 1} / ${n}`;
     if ($('#nav-pos-text')) $('#nav-pos-text').textContent = posStr;
     if ($('#nav-pos-desktop')) $('#nav-pos-desktop').textContent = posStr;
 
-    const next = $('#btn-next');
     const last = (this.index === n - 1);
+    const nextBtns = document.querySelectorAll('#btn-next, #dock-btn-next');
     if (last && this.mode !== 'review') {
-      next.textContent = 'Nộp bài';
-      next.dataset.action = 'confirmSubmit';
-      next.className = 'btn ' + (this.mode === 'exam' ? 'btn-danger' : 'btn-primary');
-      next.disabled = false;
+      const cls = 'btn ' + (this.mode === 'exam' ? 'btn-danger' : 'btn-primary');
+      nextBtns.forEach(b => {
+        b.textContent = 'Nộp bài';
+        b.dataset.action = 'confirmSubmit';
+        b.className = cls;
+        b.disabled = false;
+      });
     } else {
-      next.textContent = 'Sau →';
-      next.dataset.action = 'next';
-      next.className = 'btn btn-primary';
-      next.disabled = last;
+      nextBtns.forEach(b => {
+        b.textContent = 'Sau →';
+        b.dataset.action = 'next';
+        b.className = 'btn btn-primary';
+        b.disabled = last;
+      });
     }
 
     // Palette sidebar & progress bar

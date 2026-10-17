@@ -2,7 +2,7 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Ôn tập Kinh tế chính trị Mác - Lênin</title>
 
   <!-- iOS: chạy toàn màn hình khi "Thêm vào MH chính", thanh trạng thái (giờ, wifi, pin) trong suốt, nội dung tràn lên dưới -->
@@ -29,8 +29,9 @@
 <body data-view="setup">
 
   <!-- Mobile Scrims: Gradient fade dark mờ dần ở mép trên và dưới màn hình (chỉ hiện trên mobile, nằm dưới floating buttons) -->
-  <div class="mobile-scrim mobile-scrim-top" aria-hidden="true"></div>
-  <div class="mobile-scrim mobile-scrim-bottom" aria-hidden="true"></div>
+  <!-- Mép mờ kiểu Telegram / iOS: progressive blur (nhiều lớp blur tăng dần) + lớp phủ màu nền mỏng -->
+  <div class="mobile-scrim mobile-scrim-top" aria-hidden="true"><i></i><i></i><i></i><i></i><i class="scrim-veil"></i></div>
+  <div class="mobile-scrim mobile-scrim-bottom" aria-hidden="true"><i></i><i></i><i></i><i></i><i class="scrim-veil"></i></div>
 
   <!-- ============ HEADER ============ -->
   <header class="topbar">
@@ -304,6 +305,21 @@
     </aside>
 
   </main>
+
+  <!-- ============ THANH ĐIỀU HƯỚNG NỔI LIÊN TỤC TRÊN MOBILE (KHÔNG BIẾN MẤT KHI CHUYỂN TAB) ============ -->
+  <nav class="mobile-dock" id="mobile-dock" aria-label="Điều hướng chính">
+    <!-- Panel 1: Khi ở Setup (Nút Bắt đầu) -->
+    <div class="dock-panel dock-panel-setup" id="dock-panel-setup">
+      <button class="btn btn-primary start-btn" data-action="startFromSetup" id="dock-btn-start">
+        Bắt đầu luyện tập (57 câu)
+      </button>
+    </div>
+    <!-- Panel 2: Khi ở Quiz (Nút Trước / Sau) -->
+    <div class="dock-panel dock-panel-quiz" id="dock-panel-quiz">
+      <button class="btn btn-dock-prev" id="dock-btn-prev" data-action="prev">← Trước</button>
+      <button class="btn btn-primary btn-dock-next" id="dock-btn-next" data-action="next">Sau →</button>
+    </div>
+  </nav>
 
   <div class="backdrop" data-action="togglePalette"></div>
 
