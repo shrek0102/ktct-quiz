@@ -1,0 +1,13 @@
+{
+  "name": "Ôn tập Kinh tế chính trị Mác - Lênin",
+  "short_name": "KTCT Quiz",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f3ee",
+  "theme_color": "#f5f3ee",
+  "icons": [
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

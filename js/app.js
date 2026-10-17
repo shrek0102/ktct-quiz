@@ -241,6 +241,8 @@ const App = {
     const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', next);
     try { localStorage.setItem('ktct_theme', next); } catch (e) {}
+    const m = document.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute('content', next === 'dark' ? '#121212' : '#f5f3ee');
   },
 
   togglePalette() {

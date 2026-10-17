@@ -4,6 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Ôn tập Kinh tế chính trị Mác - Lênin</title>
+
+  <!-- iOS: chạy toàn màn hình khi "Thêm vào MH chính", thanh trạng thái (giờ, wifi, pin) trong suốt, nội dung tràn lên dưới -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="KTCT Quiz">
+  <meta name="theme-color" content="#f5f3ee">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icon-512.png">
   <script>
     /* Áp dụng theme trước khi vẽ giao diện để không bị nháy - Mặc định Light mode */
     (function () {
@@ -11,6 +20,8 @@
       try { t = localStorage.getItem('ktct_theme'); } catch (e) {}
       if (!t) t = 'light';
       document.documentElement.setAttribute('data-theme', t);
+      var m = document.querySelector('meta[name="theme-color"]');
+      if (m) m.setAttribute('content', t === 'dark' ? '#121212' : '#f5f3ee');
     })();
   </script>
   <link rel="stylesheet" href="css/styles.css">

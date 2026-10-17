@@ -847,13 +847,27 @@ details.format pre {
   }
   .mobile-scrim-top {
     top: 0;
-    height: 5.2rem;
+    height: calc(5.2rem + env(safe-area-inset-top) * .6);
     background: var(--scrim-top);
   }
   .mobile-scrim-bottom {
     bottom: 0;
-    height: 6.8rem;
+    height: calc(6.2rem + env(safe-area-inset-bottom) * .5);
     background: var(--scrim-bottom);
+  }
+
+  /* Chế độ toàn màn hình (Thêm vào MH chính): status bar chữ trắng -> làm tối đỉnh ở Light mode cho dễ đọc giờ/wifi/pin */
+  @media (display-mode: standalone) {
+    html:not([data-theme="dark"]) .mobile-scrim-top {
+      background: linear-gradient(
+        to bottom,
+        rgba(0, 0, 0, 0.55) 0%,
+        rgba(0, 0, 0, 0.38) 30%,
+        rgba(0, 0, 0, 0.16) 65%,
+        rgba(0, 0, 0, 0.04) 85%,
+        rgba(0, 0, 0, 0) 100%
+      );
+    }
   }
 
   /* ----- Top bar nổi ----- */
@@ -865,7 +879,8 @@ details.format pre {
   }
   .topbar-inner {
     max-width: none; gap: .4rem;
-    padding: calc(.6rem + env(safe-area-inset-top)) .75rem 0;
+    /* Nhích lên sát thanh trạng thái hơn (trước: .6rem + safe-area) */
+    padding: max(.6rem, calc(env(safe-area-inset-top) - .35rem)) .75rem 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -987,7 +1002,7 @@ details.format pre {
   .setup-footer {
     position: fixed; z-index: 20; margin: 0; padding: .4rem;
     left: .75rem; right: .75rem;
-    bottom: calc(.75rem + env(safe-area-inset-bottom));
+    bottom: max(.45rem, calc(env(safe-area-inset-bottom) - .7rem));
     border-radius: 20px;
   }
   .start-btn { padding: .7rem 1rem; font-size: 1.1rem; border-radius: 14px; }
@@ -1006,7 +1021,7 @@ details.format pre {
   .nav {
     position: fixed; z-index: 20; margin: 0; gap: .4rem; padding: .4rem;
     left: .75rem; right: .75rem;
-    bottom: calc(.75rem + env(safe-area-inset-bottom));
+    bottom: max(.45rem, calc(env(safe-area-inset-bottom) - .7rem));
     border-radius: 20px;
   }
   .nav .btn { min-width: 0; flex: 1; border-radius: 14px; }
@@ -1032,7 +1047,7 @@ details.format pre {
   .palette {
     position: fixed; top: auto; z-index: 40;
     left: .75rem; right: .75rem;
-    bottom: calc(.75rem + env(safe-area-inset-bottom));
+    bottom: max(.45rem, calc(env(safe-area-inset-bottom) - .7rem));
     max-height: 70vh; overflow-y: auto;
     background: var(--glass-strong);
     -webkit-backdrop-filter: blur(22px) saturate(170%);
