@@ -33,10 +33,13 @@ function fmtTime(sec) {
 const App = {
   view: 'setup',            // 'setup' | 'quiz'
   setupMode: 'practice',    // 'practice' (Luyện tập) | 'exam' (Thi thử)
-  filterMode: 'all',        // 'all' | 'none' | 'wrong' | 'marked' | 'range' | 'custom'
+  filterMode: 'scoped',     // 'all' | 'none' | 'scoped' | 'custom'
   mode: 'practice',         // mode trong lúc làm bài: 'practice' | 'exam' | 'review'
-  shuffleQuestions: false,  // Xáo trộn câu hỏi
+  shuffleQuestions: true,   // Xáo trộn câu hỏi (mặc định tick mỗi Câu hỏi)
   shuffleAnswers: false,    // Xáo trộn đáp án
+  scopeRange: true,         // Khoanh vùng: chọn khoảng câu (mặc định tick)
+  scopeWrong: true,         // Khoanh vùng: chọn câu sai (mặc định tick)
+  scopeMarked: false,       // Khoanh vùng: chọn câu lưu
 
   all: [],                  // Toàn bộ câu hỏi
   selected: new Set(),      // Các câu hỏi được chọn ở Setup
@@ -79,7 +82,7 @@ const App = {
   loadSetupPrefs() {
     this._loadingPrefs = true;
     try {
-      const raw = localStorage.getItem('ktct_setup_state_v1');
+      const raw = localStorage.getItem('ktct_setup_state_v2');
       if (raw) {
         const data = JSON.parse(raw);
         if (data) {
@@ -89,6 +92,10 @@ const App = {
           if (data.filterMode) this.filterMode = data.filterMode;
           if (typeof data.shuffleQuestions === 'boolean') this.shuffleQuestions = data.shuffleQuestions;
           if (typeof data.shuffleAnswers === 'boolean') this.shuffleAnswers = data.shuffleAnswers;
+          if (typeof data.scopeRange === 'boolean') this.scopeRange = data.scopeRange;
+          if (typeof data.scopeWrong === 'boolean') this.scopeWrong = data.scopeWrong;
+          if (typeof data.scopeMarked === 'boolean') this.scopeMarked = data.scopeMarked;
+
           if (data.examMinutes) {
             this.exam.minutes = parseInt(data.examMinutes, 10) || 20;
             const minInp = $('#setup-exam-minutes');
@@ -119,7 +126,8 @@ const App = {
     }
 
     // MẶC ĐỊNH LẦN ĐẦU VÀO WEB (theo yêu cầu người dùng):
-    // Khoanh vùng 1 -> 57 câu, Light mode (đã cấu hình mặc định trong HTML)
+    // - Xáo trộn: chỉ tick mỗi Câu hỏi (Đáp án không tick)
+    // - Khoanh vùng: Từ câu (1 -> 57) và Câu sai
     const defFrom = 1;
     const defTo = Math.min(57, this.all.length);
     const fromInp = $('#setup-from');
@@ -129,9 +137,20 @@ const App = {
       toInp.value = defTo;
       toInp.dataset.touched = '1';
     }
-    this.filterMode = 'range';
+    this.shuffleQuestions = true;
+    this.shuffleAnswers = false;
+    this.scopeRange = true;
+    this.scopeWrong = true;
+    this.scopeMarked = false;
+    this.filterMode = 'scoped';
     this.setupMode = 'practice';
-    this.selected = new Set(this.all.slice(defFrom - 1, defTo).map(q => q.id));
+
+    const defIds = new Set(this.all.slice(defFrom - 1, defTo).map(q => q.id));
+    const wrongIds = QuestionManager.getWrongQuestionIds();
+    wrongIds.forEach(id => {
+      if (this.all.some(q => q.id === id)) defIds.add(id);
+    });
+    this.selected = defIds;
     this._loadingPrefs = false;
     this.saveSetupPrefs();
   },
@@ -147,12 +166,15 @@ const App = {
         filterMode: this.filterMode,
         shuffleQuestions: !!this.shuffleQuestions,
         shuffleAnswers: !!this.shuffleAnswers,
+        scopeRange: !!this.scopeRange,
+        scopeWrong: !!this.scopeWrong,
+        scopeMarked: !!this.scopeMarked,
         rangeFrom: fromInp ? parseInt(fromInp.value, 10) || 1 : 1,
         rangeTo: toInp ? parseInt(toInp.value, 10) || this.all.length : Math.min(57, this.all.length),
         examMinutes: minInp ? parseInt(minInp.value, 10) || 20 : 20,
         selectedIds: Array.from(this.selected)
       };
-      localStorage.setItem('ktct_setup_state_v1', JSON.stringify(payload));
+      localStorage.setItem('ktct_setup_state_v2', JSON.stringify(payload));
     } catch (e) {
       console.warn('Lỗi saveSetupPrefs:', e);
     }
@@ -178,32 +200,117 @@ const App = {
       this.saveSetupPrefs();
     });
 
-    // Các checkbox tùy chọn theo sketch
-    const chkQ = $('#setup-check-shuffle-q');
-    if (chkQ) chkQ.addEventListener('change', (e) => {
+    // 1. Chọn tất cả
+    const chkAll = $('#setup-check-all');
+    if (chkAll) chkAll.addEventListener('change', (e) => {
+      if (e.target.checked) this.setupSelAll();
+      else this.setupSelNone();
+    });
+
+    // 2. Xáo trộn cha & con (mở rộng mượt mà)
+    const chkShuffle = $('#setup-check-shuffle');
+    if (chkShuffle) chkShuffle.addEventListener('change', (e) => {
+      const checked = e.target.checked;
+      if (checked) {
+        if (!this.shuffleQuestions && !this.shuffleAnswers) {
+          this.shuffleQuestions = true;
+          this.shuffleAnswers = false;
+        }
+        this.saveSetupPrefs();
+        this.renderSetup();
+        this.smoothScrollToShuffle();
+      } else {
+        this.shuffleQuestions = false;
+        this.shuffleAnswers = false;
+        this.saveSetupPrefs();
+        this.renderSetup();
+      }
+    });
+
+    const chkShuffleQ = $('#sub-check-shuffle-q');
+    if (chkShuffleQ) chkShuffleQ.addEventListener('change', (e) => {
       this.shuffleQuestions = e.target.checked;
       this.saveSetupPrefs();
+      this.renderSetup();
     });
-    const chkA = $('#setup-check-shuffle-a');
-    if (chkA) chkA.addEventListener('change', (e) => {
+
+    const chkShuffleA = $('#sub-check-shuffle-a');
+    if (chkShuffleA) chkShuffleA.addEventListener('change', (e) => {
       this.shuffleAnswers = e.target.checked;
       this.saveSetupPrefs();
+      this.renderSetup();
     });
-    const chkRange = $('#setup-check-range');
-    if (chkRange) chkRange.addEventListener('change', (e) => {
-      if (e.target.checked) this.setupSelRange();
-      else this.setupSelAll();
+
+    // 3. Khoanh vùng cha & con (cho phép chọn multiple choices)
+    const chkRangeGroup = $('#setup-check-range');
+    if (chkRangeGroup) chkRangeGroup.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        if (!this.scopeRange && !this.scopeWrong && !this.scopeMarked) {
+          this.scopeRange = true;
+          this.scopeWrong = true;
+        }
+        this.updateScopeSelection();
+        this.smoothScrollToScope();
+      } else {
+        this.scopeRange = false;
+        this.scopeWrong = false;
+        this.scopeMarked = false;
+        this.setupSelAll();
+      }
     });
+
+    // Nhánh 1: Checkbox khoảng câu
+    const chkRangeNum = $('#sub-check-range-num');
+    if (chkRangeNum) chkRangeNum.addEventListener('change', (e) => {
+      this.scopeRange = e.target.checked;
+      this.updateScopeSelection();
+    });
+
+    // Bấm vào card khoảng câu thì tự động kích hoạt tick khoảng câu
+    const rangeCard = $('#range-card-box');
+    if (rangeCard) {
+      rangeCard.addEventListener('click', () => {
+        if (!this.scopeRange) {
+          this.scopeRange = true;
+          this.updateScopeSelection();
+        }
+      });
+    }
 
     const inpFrom = $('#setup-from');
     if (inpFrom) inpFrom.addEventListener('input', () => {
-      const val = parseInt(inpFrom.value, 10);
-      if (!isNaN(val) && val >= 1) this.setupSelRange();
+      this.scopeRange = true;
+      this.updateScopeSelection();
     });
+
     const inpTo = $('#setup-to');
     if (inpTo) inpTo.addEventListener('input', () => {
-      const val = parseInt(inpTo.value, 10);
-      if (!isNaN(val) && val >= 1) this.setupSelRange();
+      this.scopeRange = true;
+      this.updateScopeSelection();
+    });
+
+    // Nhánh 2: Câu sai
+    const chkWrong = $('#sub-check-wrong');
+    if (chkWrong) chkWrong.addEventListener('change', (e) => {
+      this.scopeWrong = e.target.checked;
+      this.updateScopeSelection();
+    });
+
+    // Nhánh 3: Câu lưu
+    const chkMarked = $('#sub-check-marked');
+    if (chkMarked) chkMarked.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        const markedIds = QuestionManager.getBookmarkedIds().filter(id => this.all.some(q => q.id === id));
+        if (!markedIds.length) {
+          this.scopeMarked = false;
+          this.renderSetup();
+          return this.notice('Chưa có câu nào được gắn sao ⭐!');
+        }
+        this.scopeMarked = true;
+      } else {
+        this.scopeMarked = false;
+      }
+      this.updateScopeSelection();
     });
 
     document.addEventListener('keydown', (e) => this.onKey(e));
@@ -292,10 +399,13 @@ const App = {
     setupView.hidden = false;
     quizView.hidden = true;
 
-    setupView.classList.remove('view-enter');
+    // Cuộn lên đầu ngay lập tức để tránh layout jump trên mobile
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+
+    setupView.classList.remove('view-enter', 'view-enter-back');
     void setupView.offsetWidth;
-    setupView.classList.add('view-enter');
-    setupView.addEventListener('animationend', () => setupView.classList.remove('view-enter'), { once: true });
+    setupView.classList.add('view-enter-back');
+    setupView.addEventListener('animationend', () => setupView.classList.remove('view-enter-back'), { once: true });
 
     // Header ở trạng thái Setup
     this.updateHeaderMode();
@@ -352,8 +462,10 @@ const App = {
     // 1. Cập nhật số lượng câu sai và bookmark
     const mistakesCount = QuestionManager.getWrongQuestionIds().length;
     const bookmarksCount = QuestionManager.getBookmarkedIds().length;
-    $('#setup-count-mistakes').textContent = mistakesCount;
-    $('#setup-count-bookmarks').textContent = bookmarksCount;
+    const countMistakesEl = $('#setup-count-mistakes');
+    if (countMistakesEl) countMistakesEl.textContent = `(${mistakesCount})`;
+    const countBookmarksEl = $('#setup-count-bookmarks');
+    if (countBookmarksEl) countBookmarksEl.textContent = `(${bookmarksCount})`;
 
     // 2. Active mode card (Luyện tập hoặc Thi thử)
     $$('.mode-card').forEach(c => c.classList.remove('active'));
@@ -363,37 +475,78 @@ const App = {
     // 3. Hiển thị tùy chọn thi thử nếu chọn thi
     $('#setup-exam-options').hidden = (this.setupMode !== 'exam');
 
-    // 4. Tiêu đề mục chọn câu - không đánh số
-    $('#scope-section-title').textContent = 'Chọn câu';
+    // 4. Tiêu đề mục chọn câu theo sketch 1
+    const titleEl = $('#scope-section-title');
+    if (titleEl) titleEl.textContent = 'Câu hỏi';
 
     // Input bounds - Mặc định đến câu 57 (nếu chưa từng tùy chỉnh)
-    $('#setup-from').max = $('#setup-to').max = totalQ;
-    if (!$('#setup-to').dataset.touched) $('#setup-to').value = Math.min(57, totalQ);
+    const fromInp = $('#setup-from');
+    const toInp = $('#setup-to');
+    if (fromInp) fromInp.max = totalQ;
+    if (toInp) {
+      toInp.max = totalQ;
+      if (!toInp.dataset.touched) toInp.value = Math.min(57, totalQ);
+    }
 
-    // Đồng bộ trạng thái checkbox theo sketch
-    if ($('#setup-check-shuffle-q')) {
-      $('#setup-check-shuffle-q').checked = !!this.shuffleQuestions;
+    // Số câu đã chọn
+    const selCount = this.selected.size;
+    const selCountEl = $('#setup-sel-count');
+    if (selCountEl) {
+      selCountEl.textContent = `(${selCount}/${totalQ} câu)`;
     }
-    if ($('#setup-check-shuffle-a')) {
-      $('#setup-check-shuffle-a').checked = !!this.shuffleAnswers;
+
+    // Checkbox "Chọn tất cả"
+    const isAll = (selCount === totalQ && this.filterMode === 'all');
+    const chkAll = $('#setup-check-all');
+    if (chkAll) {
+      chkAll.checked = isAll;
     }
-    if ($('#setup-check-range')) {
-      $('#setup-check-range').checked = (this.filterMode === 'range');
+
+    // Xáo trộn: cha & 2 nhánh con (Câu hỏi & Đáp án)
+    const shuffleActive = !!(this.shuffleQuestions || this.shuffleAnswers);
+    const chkShuffle = $('#setup-check-shuffle');
+    if (chkShuffle) chkShuffle.checked = shuffleActive;
+
+    const shuffleAccordion = $('#shuffle-accordion-group');
+    if (shuffleAccordion) {
+      shuffleAccordion.classList.toggle('is-open', shuffleActive);
     }
+
+    const chkShuffleQ = $('#sub-check-shuffle-q');
+    if (chkShuffleQ) chkShuffleQ.checked = !!this.shuffleQuestions;
+
+    const chkShuffleA = $('#sub-check-shuffle-a');
+    if (chkShuffleA) chkShuffleA.checked = !!this.shuffleAnswers;
+
+    // Khoanh vùng: cha & 3 nhánh con (cho phép multiple choices)
+    const isScoped = (this.filterMode === 'scoped' || this.scopeRange || this.scopeWrong || this.scopeMarked);
+    const rangeAccordion = $('#range-accordion-group');
+    if (rangeAccordion) {
+      rangeAccordion.classList.toggle('is-open', isScoped);
+    }
+    const chkRange = $('#setup-check-range');
+    if (chkRange) {
+      chkRange.checked = isScoped;
+    }
+
+    // Nhánh 1: Khoảng câu
+    const chkRangeNum = $('#sub-check-range-num');
+    if (chkRangeNum) chkRangeNum.checked = !!this.scopeRange;
+    const subRowRange = $('#sub-row-range');
+    if (subRowRange) subRowRange.classList.toggle('active', !!this.scopeRange);
+
+    // Nhánh 2: Câu sai
+    const subWrong = $('#sub-check-wrong');
+    if (subWrong) subWrong.checked = !!this.scopeWrong;
+
+    // Nhánh 3: Câu lưu
+    const subMarked = $('#sub-check-marked');
+    if (subMarked) subMarked.checked = !!this.scopeMarked;
 
     // 5. Vẽ lưới 1..N các câu hỏi (ở trên)
     this.renderSetupGrid();
 
-    // 6. Cập nhật trạng thái tick của các nút bộ lọc
-    const selCount = this.selected.size;
-    $('#setup-sel-count').textContent = `Đang chọn: ${selCount} / ${totalQ} câu`;
-
-    // Cập nhật class 'active' cho các nút có thể tick
-    $('#filter-btn-all').classList.toggle('active', this.filterMode === 'all' && selCount === totalQ);
-    $('#filter-btn-wrong').classList.toggle('active', this.filterMode === 'wrong');
-    $('#filter-btn-marked').classList.toggle('active', this.filterMode === 'marked');
-
-    // 7. Cập nhật nút bắt đầu
+    // 6. Cập nhật nút bắt đầu
     const startBtn = $('#btn-start');
     if (this.setupMode === 'exam') {
       const mins = parseInt($('#setup-exam-minutes').value, 10) || 20;
@@ -433,6 +586,9 @@ const App = {
     this.selected.has(id) ? this.selected.delete(id) : this.selected.add(id);
     if (this.selected.size === this.all.length) {
       this.filterMode = 'all';
+      this.scopeRange = false;
+      this.scopeWrong = false;
+      this.scopeMarked = false;
     } else if (this.selected.size === 0) {
       this.filterMode = 'none';
     } else {
@@ -444,62 +600,73 @@ const App = {
   setupSelAll() {
     this.selected = new Set(this.all.map(q => q.id));
     this.filterMode = 'all';
+    this.scopeRange = false;
+    this.scopeWrong = false;
+    this.scopeMarked = false;
     this.renderSetup();
   },
 
   setupSelNone() {
     this.selected.clear();
     this.filterMode = 'none';
+    this.scopeRange = false;
+    this.scopeWrong = false;
+    this.scopeMarked = false;
     this.renderSetup();
   },
 
-  toggleSelWrong() {
-    const ids = QuestionManager.getWrongQuestionIds().filter(id => this.all.some(q => q.id === id));
-    if (!ids.length) {
-      return this.notice('Sổ câu sai hiện đang trống. Bạn chưa làm sai câu nào!');
+  smoothScrollToShuffle() {
+    const target = $('#shuffle-accordion-group') || $('#shuffle-sub-tree');
+    if (!target) return;
+    setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 120);
+  },
+
+  smoothScrollToScope() {
+    const target = $('#range-accordion-group') || $('#range-sub-tree');
+    if (!target) return;
+    setTimeout(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 120);
+  },
+
+  updateScopeSelection() {
+    const unionSet = new Set();
+    const totalQ = this.all.length;
+
+    // 1. Khoảng câu
+    if (this.scopeRange) {
+      let a = parseInt($('#setup-from').value, 10) || 1;
+      let b = parseInt($('#setup-to').value, 10) || totalQ;
+      $('#setup-to').dataset.touched = '1';
+      a = Math.max(1, Math.min(totalQ, a));
+      b = Math.max(1, Math.min(totalQ, b));
+      if (a > b) [a, b] = [b, a];
+      for (let i = a - 1; i < b; i++) {
+        if (this.all[i]) unionSet.add(this.all[i].id);
+      }
     }
-    this.selected = new Set(ids);
-    this.filterMode = 'wrong';
+
+    // 2. Câu sai
+    if (this.scopeWrong) {
+      const wrongIds = QuestionManager.getWrongQuestionIds();
+      wrongIds.forEach(id => {
+        if (this.all.some(q => q.id === id)) unionSet.add(id);
+      });
+    }
+
+    // 3. Câu lưu
+    if (this.scopeMarked) {
+      const markedIds = QuestionManager.getBookmarkedIds();
+      markedIds.forEach(id => {
+        if (this.all.some(q => q.id === id)) unionSet.add(id);
+      });
+    }
+
+    this.selected = unionSet;
+    this.filterMode = (this.scopeRange || this.scopeWrong || this.scopeMarked) ? 'scoped' : 'none';
     this.renderSetup();
-  },
-
-  toggleSelMarked() {
-    const ids = QuestionManager.getBookmarkedIds().filter(id => this.all.some(q => q.id === id));
-    if (!ids.length) {
-      return this.notice('Chưa có câu nào được gắn sao ⭐!');
-    }
-    this.selected = new Set(ids);
-    this.filterMode = 'marked';
-    this.renderSetup();
-  },
-
-  setupSelRange() {
-    const n = this.all.length;
-    let a = parseInt($('#setup-from').value, 10) || 1;
-    let b = parseInt($('#setup-to').value, 10) || n;
-    $('#setup-to').dataset.touched = '1';
-    a = Math.max(1, Math.min(n, a));
-    b = Math.max(1, Math.min(n, b));
-    if (a > b) [a, b] = [b, a];
-    this.selected = new Set(this.all.slice(a - 1, b).map(q => q.id));
-    this.filterMode = 'range';
-    this.renderSetup();
-  },
-
-  toggleShuffleQuestions() {
-    this.shuffleQuestions = !this.shuffleQuestions;
-    if ($('#setup-check-shuffle-q')) {
-      $('#setup-check-shuffle-q').checked = this.shuffleQuestions;
-    }
-    this.saveSetupPrefs();
-  },
-
-  toggleShuffleAnswers() {
-    this.shuffleAnswers = !this.shuffleAnswers;
-    if ($('#setup-check-shuffle-a')) {
-      $('#setup-check-shuffle-a').checked = this.shuffleAnswers;
-    }
-    this.saveSetupPrefs();
   },
 
   setExamMin(m) {
@@ -569,7 +736,7 @@ const App = {
     this.answers = {};
     this.index = 0;
 
-    // Chuyển sang Màn hình làm bài (Quiz View) kèm hiệu ứng fade
+    // Chuyển sang Màn hình làm bài (Quiz View) kèm hiệu ứng chuyển cảnh mượt mà
     this.view = 'quiz';
     document.body.dataset.view = 'quiz';
     const setupView = $('#view-setup');
@@ -577,7 +744,10 @@ const App = {
     setupView.hidden = true;
     quizView.hidden = false;
 
-    quizView.classList.remove('view-enter');
+    // Cuộn lên đầu ngay lập tức để tránh giật lag layout trên mobile
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+
+    quizView.classList.remove('view-enter', 'view-enter-back');
     void quizView.offsetWidth;
     quizView.classList.add('view-enter');
     quizView.addEventListener('animationend', () => quizView.classList.remove('view-enter'), { once: true });
@@ -799,7 +969,7 @@ const App = {
     this.answers[q.id] = letter;
 
     if (letter === q.correctAnswer) {
-      if (this.mode === 'mistakes') QuestionManager.removeWrongQuestion(q.id);
+      QuestionManager.removeWrongQuestion(q.id);
     } else {
       QuestionManager.addWrongQuestion(q.id);
     }
@@ -907,6 +1077,7 @@ const App = {
     this.session.forEach(q => {
       if (this.answers[q.id] === q.correctAnswer) {
         correct++;
+        QuestionManager.removeWrongQuestion(q.id);
       } else {
         QuestionManager.addWrongQuestion(q.id);
       }

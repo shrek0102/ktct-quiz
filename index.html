@@ -95,6 +95,7 @@
       </div>
 
       <!-- Chế độ -->
+      <!-- Chế độ -->
       <div class="setup-sec">
         <label class="sec-label">Chế độ</label>
         <div class="mode-grid">
@@ -104,7 +105,7 @@
             </div>
             <div class="mode-info">
               <strong>Luyện tập</strong>
-              <span>Biết đúng sai ngay</span>
+              <span>Hiển thị kết quả tức thì</span>
             </div>
           </button>
 
@@ -114,7 +115,7 @@
             </div>
             <div class="mode-info">
               <strong>Thi thử</strong>
-              <span>Tính giờ, chấm điểm khi nộp</span>
+              <span>Bấm giờ và tổng kết điểm số</span>
             </div>
           </button>
         </div>
@@ -138,70 +139,120 @@
         </div>
       </div>
 
-      <!-- Chọn câu -->
+      <!-- Chọn câu theo sketch 1 -->
       <div class="setup-sec" id="setup-question-scope">
         <div class="sec-label-row">
-          <label class="sec-label" id="scope-section-title">Chọn câu</label>
-          <span class="sel-count-badge" id="setup-sel-count">Đang chọn: 0 câu</span>
+          <div class="scope-header-left">
+            <label class="sec-label" id="scope-section-title">Câu hỏi</label>
+            <span class="sel-count-badge" id="setup-sel-count">(57/100 câu)</span>
+          </div>
+          <button type="button" class="btn-clear-icon" id="filter-btn-clear" data-action="setupSelNone" title="Bỏ chọn toàn bộ câu hỏi" aria-label="Bỏ chọn toàn bộ câu hỏi">
+            <svg class="stroke" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></svg>
+          </button>
         </div>
 
         <!-- 1. Hàng chọn câu (lưới các số câu) đưa lên trên -->
         <div class="setup-grid" id="setup-grid"></div>
 
-        <!-- 2. Bên dưới là các nút bộ lọc & khoanh vùng -->
+        <!-- 2. Danh sách tùy chọn checkbox theo sketch 1 -->
         <div class="scope-tools" id="scope-tools-box">
-          <div class="filter-pills-row">
-            <button type="button" class="filter-pill active" id="filter-btn-all" data-action="setupSelAll">
-              <svg class="stroke filter-check-icon" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
-              <span>Tất cả</span>
-            </button>
-            <button type="button" class="filter-pill filter-pill-clear" id="filter-btn-clear" data-action="setupSelNone">
-              <span>Clear</span>
-            </button>
-            <button type="button" class="filter-pill" id="filter-btn-wrong" data-action="toggleSelWrong">
-              <svg class="stroke filter-check-icon" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
-              <span>Câu sai</span>
-              <span class="count-pill badge-bad" id="setup-count-mistakes">0</span>
-            </button>
-            <button type="button" class="filter-pill" id="filter-btn-marked" data-action="toggleSelMarked">
-              <svg class="stroke filter-check-icon" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
-              <span>Câu lưu</span>
-              <span class="count-pill badge-star" id="setup-count-bookmarks">0</span>
-            </button>
-          </div>
-
-          <!-- Các tùy chọn dạng checkbox theo sketch: Xáo trộn câu hỏi, Xáo trộn đáp án, Khoanh vùng -->
           <div class="setup-checkboxes">
-            <label class="check-item" for="setup-check-shuffle-q">
-              <input type="checkbox" id="setup-check-shuffle-q" class="check-input">
+            <!-- 1. Chọn tất cả -->
+            <label class="check-item" for="setup-check-all">
+              <input type="checkbox" id="setup-check-all" class="check-input">
               <span class="check-box" aria-hidden="true">
                 <svg class="stroke check-ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
               </span>
-              <span class="check-text">Xáo trộn câu hỏi</span>
+              <span class="check-text">Chọn tất cả</span>
             </label>
 
-            <label class="check-item" for="setup-check-shuffle-a">
-              <input type="checkbox" id="setup-check-shuffle-a" class="check-input">
-              <span class="check-box" aria-hidden="true">
-                <svg class="stroke check-ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
-              </span>
-              <span class="check-text">Xáo trộn đáp án</span>
-            </label>
+            <!-- 2. Xáo trộn và cây phân nhánh mở rộng mượt mà -->
+            <div class="shuffle-accordion-group is-open" id="shuffle-accordion-group">
+              <label class="check-item" for="setup-check-shuffle">
+                <input type="checkbox" id="setup-check-shuffle" class="check-input" checked>
+                <span class="check-box" aria-hidden="true">
+                  <svg class="stroke check-ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                </span>
+                <span class="check-text">Xáo trộn</span>
+              </label>
 
-            <div class="range-check-group" id="range-check-group">
+              <!-- Vùng phân nhánh nét đứt mượt mà (smooth accordion expand) -->
+              <div class="shuffle-sub-tree" id="shuffle-sub-tree">
+                <!-- Nhánh 1: Câu hỏi -->
+                <div class="tree-item">
+                  <label class="check-item check-item-sub" for="sub-check-shuffle-q">
+                    <input type="checkbox" id="sub-check-shuffle-q" class="check-input" checked>
+                    <span class="check-box" aria-hidden="true">
+                      <svg class="stroke check-ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                    </span>
+                    <span class="check-text">Câu hỏi</span>
+                  </label>
+                </div>
+
+                <!-- Nhánh 2: Đáp án -->
+                <div class="tree-item">
+                  <label class="check-item check-item-sub" for="sub-check-shuffle-a">
+                    <input type="checkbox" id="sub-check-shuffle-a" class="check-input">
+                    <span class="check-box" aria-hidden="true">
+                      <svg class="stroke check-ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                    </span>
+                    <span class="check-text">Đáp án</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. Khoanh vùng và cây phân nhánh mở rộng mượt mà -->
+            <div class="range-accordion-group is-open" id="range-accordion-group">
               <label class="check-item" for="setup-check-range">
-                <input type="checkbox" id="setup-check-range" class="check-input">
+                <input type="checkbox" id="setup-check-range" class="check-input" checked>
                 <span class="check-box" aria-hidden="true">
                   <svg class="stroke check-ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
                 </span>
                 <span class="check-text">Khoanh vùng</span>
               </label>
 
-              <div class="range-sub-row" id="range-sub-row">
-                <span class="range-lbl">Từ câu</span>
-                <input type="number" id="setup-from" min="1" value="1">
-                <span class="range-lbl">đến</span>
-                <input type="number" id="setup-to" min="1" value="20">
+              <!-- Vùng phân nhánh nét đứt mượt mà (smooth accordion expand) -->
+              <div class="range-sub-tree" id="range-sub-tree">
+                <!-- Nhánh 1: Từ câu ... đến ... kèm checkbox theo yêu cầu mới -->
+                <div class="tree-item tree-item-range active" id="sub-row-range">
+                  <label class="check-item check-item-sub" for="sub-check-range-num" title="Khoanh vùng theo khoảng câu">
+                    <input type="checkbox" id="sub-check-range-num" class="check-input" checked>
+                    <span class="check-box" aria-hidden="true">
+                      <svg class="stroke check-ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                    </span>
+                  </label>
+                  <div class="range-inputs-card" id="range-card-box">
+                    <span class="range-lbl">Từ câu</span>
+                    <input type="number" id="setup-from" min="1" value="1" aria-label="Từ câu">
+                    <span class="range-lbl">đến</span>
+                    <input type="number" id="setup-to" min="1" value="57" aria-label="Đến câu">
+                  </div>
+                </div>
+
+                <!-- Nhánh 2: Câu sai kèm số đếm đỏ (?) căn thẳng hàng -->
+                <div class="tree-item">
+                  <label class="check-item check-item-sub" for="sub-check-wrong">
+                    <input type="checkbox" id="sub-check-wrong" class="check-input" checked>
+                    <span class="check-box" aria-hidden="true">
+                      <svg class="stroke check-ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                    </span>
+                    <span class="check-text check-text-fixed">Câu sai</span>
+                    <span class="badge-count badge-bad" id="setup-count-mistakes">(0)</span>
+                  </label>
+                </div>
+
+                <!-- Nhánh 3: Câu lưu kèm số đếm vàng (?) căn thẳng hàng -->
+                <div class="tree-item">
+                  <label class="check-item check-item-sub" for="sub-check-marked">
+                    <input type="checkbox" id="sub-check-marked" class="check-input">
+                    <span class="check-box" aria-hidden="true">
+                      <svg class="stroke check-ico" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+                    </span>
+                    <span class="check-text check-text-fixed">Câu lưu</span>
+                    <span class="badge-count badge-star" id="setup-count-bookmarks">(0)</span>
+                  </label>
+                </div>
               </div>
             </div>
           </div>

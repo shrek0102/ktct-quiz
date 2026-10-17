@@ -350,56 +350,62 @@ svg.stroke { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: 
   background: var(--accent); border-color: var(--accent); color: var(--accent-contrast);
 }
 
+/* ---------- Header chọn câu (sketch 1: Câu hỏi (57/100 câu) ........ Clear) ---------- */
+.sec-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: .6rem;
+}
+.scope-header-left {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+}
+.scope-header-left .sec-label {
+  margin-bottom: 0;
+}
+.sel-count-badge {
+  font-size: .95rem;
+  color: var(--muted);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.btn-clear-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  min-width: 2rem;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, transform .1s cubic-bezier(0.2, 0.8, 0.4, 1);
+}
+.btn-clear-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+.btn-clear-icon:hover {
+  background: var(--surface-2);
+  color: var(--bad);
+  transform: scale(1.08);
+}
+.btn-clear-icon:active {
+  transform: scale(0.9);
+}
+
 .scope-tools {
-  display: flex; flex-direction: column; gap: .75rem;
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
 }
 
-.filter-pills-row {
-  display: flex; flex-wrap: wrap; align-items: center; gap: .45rem;
-}
-.filter-pill {
-  display: inline-flex; align-items: center; gap: .35rem;
-  padding: .35rem .8rem;
-  background: var(--surface); border: 1.5px solid var(--border); border-radius: 999px;
-  font-weight: 700; font-size: .95rem; color: var(--text);
-  cursor: pointer; transition: all .15s ease, transform .1s cubic-bezier(0.2, 0.8, 0.4, 1);
-}
-.filter-pill:hover { border-color: var(--accent); background: var(--hover-tint); }
-.filter-pill:active { transform: scale(0.95); }
-.filter-pill.active {
-  background: var(--accent); border-color: var(--accent); color: var(--accent-contrast);
-}
-.filter-pill .filter-check-icon, .pill-action .filter-check-icon {
-  width: .95rem; height: .95rem; display: none; stroke-width: 2.5;
-}
-.filter-pill.active .filter-check-icon, .pill-action.active .filter-check-icon {
-  display: inline-block;
-  animation: checkPop .22s cubic-bezier(0.175, 0.885, 0.32, 1.25);
-}
-@keyframes checkPop {
-  from { transform: scale(0); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-.filter-pill-clear { color: var(--muted); }
-.filter-pill-clear:hover { color: var(--bad); border-color: var(--bad); background: var(--bad-soft); }
-
-.badge-bad {
-  background: var(--bad-soft); color: var(--bad);
-  padding: .05rem .45rem; border-radius: 999px; font-size: .8rem; font-weight: 700;
-}
-.filter-pill.active .badge-bad {
-  background: rgba(255, 255, 255, .25); color: #fff;
-}
-.badge-star {
-  background: #fef3c7; color: #b45309;
-  padding: .05rem .45rem; border-radius: 999px; font-size: .8rem; font-weight: 700;
-}
-[data-theme="dark"] .badge-star { background: #3c2a05; color: #fbbf24; }
-.filter-pill.active .badge-star {
-  background: rgba(255, 255, 255, .25); color: #fff;
-}
-
-/* ---------- Checkbox options theo sketch: Xáo trộn câu hỏi, Xáo trộn đáp án, Khoanh vùng ---------- */
+/* ---------- Checkbox options theo sketch 1: Tất cả, Xáo trộn câu hỏi, Xáo trộn đáp án, Khoanh vùng ---------- */
 .setup-checkboxes {
   display: flex;
   flex-direction: column;
@@ -477,18 +483,156 @@ svg.stroke.check-ico {
   line-height: 1.2;
 }
 
-/* Khoanh vùng group & sub-row */
-.range-check-group {
+/* ---------- Cây phân nhánh Khoanh vùng & Xáo trộn (smooth accordion expand) ---------- */
+.range-accordion-group,
+.shuffle-accordion-group {
   display: flex;
   flex-direction: column;
-  gap: .35rem;
 }
 
-.range-sub-row {
+.range-sub-tree,
+.shuffle-sub-tree {
+  margin-left: .62rem;               /* Căn trục đứng thẳng hàng với tâm checkbox cha */
+  padding-left: 1.35rem;
+  border-left: 2px dashed var(--border);
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: max-height .35s cubic-bezier(0.16, 1, 0.3, 1),
+              opacity .25s ease,
+              transform .35s cubic-bezier(0.16, 1, 0.3, 1),
+              margin .35s cubic-bezier(0.16, 1, 0.3, 1),
+              padding .35s cubic-bezier(0.16, 1, 0.3, 1);
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.range-accordion-group.is-open .range-sub-tree,
+.shuffle-accordion-group.is-open .shuffle-sub-tree {
+  max-height: 280px;
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+  margin-top: .5rem;
+  margin-bottom: .25rem;
+  padding-top: .2rem;
+  padding-bottom: .2rem;
+}
+
+.tree-item {
+  position: relative;
   display: flex;
   align-items: center;
+  margin: .6rem 0;
+}
+
+/* Nét đứt ngang nối vào từng nhánh con */
+.tree-item::before {
+  content: "";
+  position: absolute;
+  left: -1.35rem;
+  top: 50%;
+  width: .95rem;
+  border-top: 2px dashed var(--border);
+  pointer-events: none;
+}
+
+/* Nhánh 1: Thẻ nhập khoảng câu kèm checkbox */
+.tree-item-range {
+  display: flex;
+  align-items: center;
+  gap: .55rem;
+}
+.tree-item-range label {
+  cursor: pointer;
+  margin: 0;
+}
+.tree-item-range .range-inputs-card {
+  display: inline-flex;
+  align-items: center;
   gap: .45rem;
-  margin-left: 1.9rem; /* Thụt lề thẳng hàng với chữ "Khoanh vùng" theo sketch */
+  padding: .32rem .65rem;
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: 9px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .03);
+  transition: border-color .15s, box-shadow .15s, background .15s, opacity .15s;
+}
+.tree-item-range:not(.active) .range-inputs-card {
+  opacity: .65;
+}
+.tree-item-range.active .range-inputs-card {
+  opacity: 1;
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.range-inputs-card:focus-within {
+  border-color: var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+  opacity: 1;
+}
+
+/* Căn nhãn câu sai và câu lưu có chiều rộng cố định để các badge số lượng thẳng hàng 100% */
+.check-text-fixed {
+  display: inline-block;
+  width: 4.8rem;
+  min-width: 4.8rem;
+  flex: none;
+}
+
+/* Checkbox phụ (bên dưới Xáo trộn & Khoanh vùng): Dạng chấm tròn nhỏ hơn 1 tí, không có tick, không đốm phát sáng */
+.check-item-sub .check-box {
+  width: .88rem;
+  height: .88rem;
+  min-width: .88rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  transition: all .15s ease, transform .1s cubic-bezier(0.2, 0.8, 0.4, 1);
+  box-shadow: none !important;
+}
+
+.check-item-sub .check-ico,
+.check-item-sub svg.check-ico {
+  display: none !important;
+}
+
+.check-item-sub .check-input:checked + .check-box {
+  background: var(--accent);
+  border-color: var(--accent);
+  transform: none;
+  box-shadow: none !important;
+}
+
+.check-item-sub:hover .check-box {
+  border-color: var(--accent);
+}
+
+.check-item-sub:active .check-box {
+  transform: scale(0.85);
+}
+
+.range-inputs-card input {
+  width: 3.4rem;
+  height: 2rem;
+  padding: .15rem .3rem;
+  text-align: center;
+  font-weight: 700;
+  font-size: .95rem;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  transition: border-color .15s;
+}
+.range-inputs-card input:focus {
+  border-color: var(--accent);
+  outline: none;
 }
 
 .range-lbl {
@@ -497,25 +641,21 @@ svg.stroke.check-ico {
   font-weight: 700;
 }
 
-.range-sub-row input {
-  width: 3.4rem;
-  height: 2.1rem;
-  padding: .2rem .4rem;
-  text-align: center;
-  font-weight: 700;
+/* Huy hiệu số đếm câu sai và câu lưu */
+.badge-count {
   font-size: .95rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
-  transition: border-color .15s, box-shadow .15s;
+  margin-left: .25rem;
 }
-
-.range-sub-row input:focus {
-  border-color: var(--accent);
-  outline: none;
-  box-shadow: 0 0 0 2px var(--accent-soft);
+.badge-count.badge-bad {
+  color: var(--bad);
+}
+.badge-count.badge-star {
+  color: #b45309;
+}
+[data-theme="dark"] .badge-count.badge-star {
+  color: #fbbf24;
 }
 
 .setup-footer {
@@ -531,12 +671,46 @@ svg.stroke.check-ico {
   display: grid; grid-template-columns: minmax(0, 1fr) 290px; gap: 1.5rem; align-items: start;
 }
 
+/* ---------- VIEW TRANSITIONS (CHUYỂN CẢNH MƯỢT MÀ) ---------- */
 .view-enter {
-  animation: viewFadeIn .2s ease;
+  animation: viewTransitionIn .32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
 }
-@keyframes viewFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes viewTransitionIn {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.992);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.view-enter-back {
+  animation: viewTransitionBack .32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: opacity, transform;
+}
+@keyframes viewTransitionBack {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.992);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes floatBarEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .card {
@@ -978,8 +1152,13 @@ details.format pre {
   .setup-sub { display: none; }
   .setup-sec { margin-top: .75rem; padding-top: .75rem; }
   .sec-label { font-size: 1rem; margin-bottom: .45rem; }
-  .sec-label-row { margin-bottom: .45rem; }
+  .sec-label-row { margin-bottom: .45rem; display: flex; align-items: center; justify-content: space-between; }
   .sec-label-row .sec-label { margin-bottom: 0; }
+  .scope-header-left { display: flex; align-items: baseline; gap: .45rem; }
+  .scope-header-left .sec-label { font-size: 1.05rem; }
+  .scope-header-left .sel-count-badge { font-size: .88rem; }
+  .btn-clear-icon { width: 1.85rem; height: 1.85rem; min-width: 1.85rem; border-radius: 50%; }
+  .btn-clear-icon svg { width: 1.15rem; height: 1.15rem; }
 
   .mode-grid { grid-template-columns: repeat(2, 1fr); gap: .45rem; }
   .mode-card { align-items: center; gap: .5rem; padding: .5rem .65rem; }
@@ -990,20 +1169,29 @@ details.format pre {
   .setup-grid { max-height: 225px; padding: .4rem; gap: .3rem; margin-bottom: .65rem; }
   .setup-grid .chip { height: 2rem; font-size: .9rem; }
 
-  .filter-pills-row { gap: .35rem; }
-  .filter-pill { padding: .28rem .7rem; font-size: .88rem; }
   .setup-checkboxes { gap: .55rem; padding-top: .6rem; }
   .check-box { width: 1.25rem; height: 1.25rem; min-width: 1.25rem; }
   .check-text { font-size: .95rem; }
-  .range-sub-row { margin-left: 1.85rem; gap: .35rem; }
-  .range-sub-row input { width: 3.2rem; height: 2rem; font-size: .9rem; padding: .15rem .3rem; }
+
+  .range-sub-tree,
+  .shuffle-sub-tree { margin-left: .58rem; padding-left: 1.15rem; }
+  .tree-item { margin: .5rem 0; }
+  .tree-item::before { left: -1.15rem; width: .8rem; }
+  .tree-item-range { gap: .45rem; }
+  .check-item-sub .check-box { width: .82rem; height: .82rem; min-width: .82rem; }
+  .check-text-fixed { width: 4.4rem; min-width: 4.4rem; }
+  .range-inputs-card { padding: .25rem .5rem; gap: .35rem; }
+  .range-inputs-card input { width: 3.1rem; height: 1.9rem; font-size: .9rem; padding: .15rem .25rem; }
   .range-lbl { font-size: .88rem; }
+  .badge-count { font-size: .88rem; }
 
   .setup-footer {
     position: fixed; z-index: 20; margin: 0; padding: .4rem;
     left: .75rem; right: .75rem;
     bottom: max(.45rem, calc(env(safe-area-inset-bottom) - .7rem));
     border-radius: 20px;
+    animation: floatBarEnter .32s cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: opacity, transform;
   }
   .start-btn { padding: .7rem 1rem; font-size: 1.1rem; border-radius: 14px; }
 
@@ -1023,6 +1211,8 @@ details.format pre {
     left: .75rem; right: .75rem;
     bottom: max(.45rem, calc(env(safe-area-inset-bottom) - .7rem));
     border-radius: 20px;
+    animation: floatBarEnter .32s cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: opacity, transform;
   }
   .nav .btn { min-width: 0; flex: 1; border-radius: 14px; }
   .nav .btn:not(.btn-primary):not(.btn-danger) { background: transparent; border-color: transparent; }
