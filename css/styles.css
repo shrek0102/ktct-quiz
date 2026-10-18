@@ -28,6 +28,10 @@
   --glass-border: rgba(255, 255, 255, .75);
   --glass-shadow: 0 8px 28px rgba(40, 30, 10, .14), inset 0 1px 0 rgba(255, 255, 255, .85), inset 0 -1px 0 rgba(255, 255, 255, .35);
   --hover-tint: rgba(120, 110, 90, .14);
+  --glass-accent: rgba(31, 74, 138, .09);
+  --glass-accent-border: rgba(31, 74, 138, .24);
+  --glass-danger: rgba(179, 38, 30, .09);
+  --glass-danger-border: rgba(179, 38, 30, .24);
   --overlay: rgba(20, 16, 8, .45);
   --radius: 12px;
 
@@ -62,6 +66,10 @@
   --glass-border: rgba(255, 255, 255, .16);
   --glass-shadow: 0 8px 28px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .14), inset 0 -1px 0 rgba(255, 255, 255, .04);
   --hover-tint: rgba(255, 255, 255, .1);
+  --glass-accent: rgba(138, 180, 248, .12);
+  --glass-accent-border: rgba(138, 180, 248, .28);
+  --glass-danger: rgba(240, 140, 132, .12);
+  --glass-danger-border: rgba(240, 140, 132, .28);
   --overlay: rgba(0, 0, 0, .65);
 
   /* Veil nền mỏng cho progressive blur (cùng tông nền, không phải đen thuần) */
@@ -1112,31 +1120,61 @@ details.format pre {
   }
   .timer-ico { width: 1.05rem; height: 1.05rem; }
 
-  /* Nút nộp bài riêng biệt trên mobile, nằm ở bên phải cuối cùng */
+  /* Nút nộp bài riêng biệt trên mobile, nằm ở bên phải cuối cùng - Liquid glass đồng bộ 100% với các pill cùng hàng */
   .btn-submit-pill {
     pointer-events: auto;
-    height: 2.7rem; padding: 0 .95rem; border-radius: 999px;
+    height: 2.7rem; padding: 0 1rem; border-radius: 999px;
     display: inline-flex; align-items: center; justify-content: center;
     font-size: .95rem; font-weight: 700;
-    border: 1px solid transparent;
     flex-shrink: 0;
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    color: var(--accent);
+    transition: background .15s, border-color .15s, color .15s, transform .1s ease, box-shadow .15s;
   }
-  .btn-submit-pill.btn-danger {
-    background: var(--bad); color: #fff; border-color: rgba(255, 255, 255, .25);
+  .btn-submit-pill:hover:not(:disabled) {
+    background: var(--hover-tint);
+  }
+  .btn-submit-pill:active:not(:disabled) {
+    transform: scale(0.92);
   }
   .btn-submit-pill.btn-primary {
-    background: var(--accent); color: var(--accent-contrast); border-color: rgba(255, 255, 255, .25);
+    background: linear-gradient(135deg, var(--glass-accent), var(--glass-accent)), var(--glass);
+    color: var(--accent);
+    border-color: var(--glass-accent-border);
+  }
+  .btn-submit-pill.btn-primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--glass-accent), var(--glass-accent)), var(--hover-tint);
+  }
+  .btn-submit-pill.btn-danger {
+    background: linear-gradient(135deg, var(--glass-danger), var(--glass-danger)), var(--glass);
+    color: var(--bad);
+    border-color: var(--glass-danger-border);
+  }
+  .btn-submit-pill.btn-danger:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--glass-danger), var(--glass-danger)), var(--hover-tint);
   }
 
   .btn-reopen-result {
-    padding: .2rem .6rem; font-size: .85rem; border-radius: 999px;
-    display: inline-flex; align-items: center; gap: .25rem;
-    background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+    pointer-events: auto;
+    height: 2.7rem; padding: 0 .95rem; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: .35rem;
+    font-size: .95rem; font-weight: 700;
+    flex-shrink: 0;
+    background: var(--glass);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    color: var(--text);
   }
   .btn-reopen-result:hover {
     background: var(--hover-tint); border-color: var(--accent); color: var(--accent);
   }
-  .btn-reopen-result svg { width: .85rem; height: .85rem; }
+  .btn-reopen-result svg { width: 1.05rem; height: 1.05rem; }
   .txt-long { display: none; }
   .txt-short { display: inline; }
 
