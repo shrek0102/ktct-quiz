@@ -504,10 +504,12 @@
               let specular = directional * stroke;
               specular = specular / (1 + 0.5 * (1 - specular));
               const diffuse = diffuseDir * 0.18 * pow(1 - sat(-d / 4.5), 2) * coverage;
+              const bevelDepth = pow(1 - sat(-d / Math.max(6, bz * 0.65)), 2.2) * sat(-d / 1.2) * coverage;
+              const innerBevel = directional * (tint ? 0.22 : dark ? 0.08 : 0.14) * bevelDepth;
               const topBias = dark && !tint ? (ny < 0 ? 1.0 : 0.62) : 1.0;
               const specScale = dark && !tint ? 0.28 * topBias : 1.0;
               const diffScale = dark && !tint ? 0.08 * topBias : 0.85;
-              const highlight = sat(specular * specScale + diffuse * diffScale);
+              const highlight = sat(specular * specScale + diffuse * diffScale + innerBevel);
               const adjusted = d - 0.5;
               const falloff = 1 - sat(-adjusted / 0.5);
               const ramp = (falloff > 0 ? 1 : 0) * 0.25 + falloff * 0.75;
@@ -523,9 +525,9 @@
               if (alpha <= 0.002) continue;
               if (tint) {
                 const base = highlight / Math.max(alpha, 1e-5);
-                data[o] = Math.round(255 * Math.min(1, base * (0.45 + 0.55 * tint[0])));
-                data[o + 1] = Math.round(255 * Math.min(1, base * (0.45 + 0.55 * tint[1])));
-                data[o + 2] = Math.round(255 * Math.min(1, base * (0.45 + 0.55 * tint[2])));
+                data[o] = Math.round(255 * Math.min(1, base * (0.82 + 0.18 * tint[0])));
+                data[o + 1] = Math.round(255 * Math.min(1, base * (0.82 + 0.18 * tint[1])));
+                data[o + 2] = Math.round(255 * Math.min(1, base * (0.82 + 0.18 * tint[2])));
                 data[o + 3] = Math.round(255 * alpha);
               } else {
                 const light = ((dark ? 0.70 : 1) * highlight) / Math.max(alpha, 1e-5);
@@ -1218,9 +1220,17 @@
       const spec =
         material === "regular" ? (dark ? MATERIALS.regular.dark : MATERIALS.regular.light) : null;
       const cssTone = tintRGB
-        ? `saturate(1.35) brightness(0.36)`
+        ? `saturate(1.8) brightness(0.64) contrast(1.18)`
         : `saturate(${saturation}) brightness(${dark ? brightness * 0.88 : brightness})`;
-      const engineBlur = this.engine === "webkit" ? Math.min(fallbackBlur, 16) : fallbackBlur;
+      const clearFrostBlur = Math.max(3, Math.min(4.5, (blur || 1.8) * 2));
+      const engineBlur =
+        material === "clear"
+          ? tintRGB
+            ? 4
+            : clearFrostBlur
+          : this.engine === "webkit"
+          ? Math.min(fallbackBlur, 16)
+          : fallbackBlur;
       const backdrop = refracting
         ? `url(#${filterId})`
         : material === "regular"
@@ -1238,35 +1248,38 @@
       this.overlayEl.style.backgroundImage = overlay ? `url(${overlay})` : "none";
 
       // Fills & veils (underneath overlayEl specular rim)
+      this.fillEl.style.backgroundImage = "none";
       if (veil) {
         this.fillEl.style.display = "block";
         this.fillEl.style.clipPath = outline.polygon;
         this.fillEl.style.backgroundColor = veil;
-      } else if (!refracting && tintRGB) {
+      } else if (!refracting && (material === "regular" || dark || tintRGB)) {
         this.fillEl.style.display = "block";
         this.fillEl.style.clipPath = outline.polygon;
-        const op = material === "regular" ? spec.fillOpacity : 0.88;
-        this.fillEl.style.backgroundColor = `rgb(${tintRGB
-          .map((c) => Math.round(c * 255))
-          .join(" ")} / ${op})`;
-      } else if (!refracting && material === "regular") {
+        if (tintRGB) {
+          const op = material === "regular" ? spec.fillOpacity : 0.66;
+          const maxC = Math.max(tintRGB[0], tintRGB[1], tintRGB[2], 1e-5);
+          const deepRGB = tintRGB
+            .map((c) =>
+              Math.min(255, Math.round(255 * Math.min(1, maxC * 1.15) * Math.pow(c / maxC, 1.8)))
+            )
+            .join(" ");
+          this.fillEl.style.backgroundColor = `rgb(${deepRGB} / ${op})`;
+          this.fillEl.style.backgroundImage =
+            "linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 42%, rgba(0, 0, 0, 0.08) 100%)";
+        } else if (material === "regular") {
+          this.fillEl.style.backgroundColor = dark
+            ? `rgb(16 16 18 / ${spec.fillOpacity})`
+            : `rgb(255 255 255 / ${spec.fillOpacity})`;
+        } else {
+          this.fillEl.style.backgroundColor = "rgb(8 8 10 / 0.16)";
+        }
+      } else if (refracting && material === "clear" && !tintRGB) {
         this.fillEl.style.display = "block";
         this.fillEl.style.clipPath = outline.polygon;
         this.fillEl.style.backgroundColor = dark
-          ? `rgb(16 16 18 / ${spec.fillOpacity})`
-          : `rgb(255 255 255 / ${spec.fillOpacity})`;
-      } else if (material === "clear" && !tintRGB) {
-        this.fillEl.style.display = "block";
-        this.fillEl.style.clipPath = outline.polygon;
-        if (refracting) {
-          this.fillEl.style.backgroundColor = dark
-            ? "rgb(20 20 24 / 0.28)"
-            : "rgb(255 255 255 / 0.08)";
-        } else {
-          this.fillEl.style.backgroundColor = dark
-            ? "rgb(24 24 28 / 0.44)"
-            : "rgb(255 255 255 / 0.22)";
-        }
+          ? "rgb(20 20 24 / 0.28)"
+          : "rgb(255 255 255 / 0.08)";
       } else {
         this.fillEl.style.display = "none";
       }
