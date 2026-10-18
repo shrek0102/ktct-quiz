@@ -504,12 +504,10 @@
               let specular = directional * stroke;
               specular = specular / (1 + 0.5 * (1 - specular));
               const diffuse = diffuseDir * 0.18 * pow(1 - sat(-d / 4.5), 2) * coverage;
-              const bevelDepth = pow(1 - sat(-d / Math.max(6, bz * 0.65)), 2.2) * sat(-d / 1.2) * coverage;
-              const innerBevel = directional * (tint ? 0.22 : dark ? 0.08 : 0.14) * bevelDepth;
               const topBias = dark && !tint ? (ny < 0 ? 1.0 : 0.62) : 1.0;
               const specScale = dark && !tint ? 0.28 * topBias : 1.0;
               const diffScale = dark && !tint ? 0.08 * topBias : 0.85;
-              const highlight = sat(specular * specScale + diffuse * diffScale + innerBevel);
+              const highlight = sat(specular * specScale + diffuse * diffScale);
               const adjusted = d - 0.5;
               const falloff = 1 - sat(-adjusted / 0.5);
               const ramp = (falloff > 0 ? 1 : 0) * 0.25 + falloff * 0.75;
@@ -525,9 +523,9 @@
               if (alpha <= 0.002) continue;
               if (tint) {
                 const base = highlight / Math.max(alpha, 1e-5);
-                data[o] = Math.round(255 * Math.min(1, base * (0.82 + 0.18 * tint[0])));
-                data[o + 1] = Math.round(255 * Math.min(1, base * (0.82 + 0.18 * tint[1])));
-                data[o + 2] = Math.round(255 * Math.min(1, base * (0.82 + 0.18 * tint[2])));
+                data[o] = Math.round(255 * Math.min(1, base * (0.45 + 0.55 * tint[0])));
+                data[o + 1] = Math.round(255 * Math.min(1, base * (0.45 + 0.55 * tint[1])));
+                data[o + 2] = Math.round(255 * Math.min(1, base * (0.45 + 0.55 * tint[2])));
                 data[o + 3] = Math.round(255 * alpha);
               } else {
                 const light = ((dark ? 0.70 : 1) * highlight) / Math.max(alpha, 1e-5);
@@ -838,7 +836,7 @@
       set(press, 0, springs.release);
       set(tx, 0, springs.release);
       set(ty, 0, springs.release);
-      set(glow, 0, springs.glow);
+      set(glow, hovering ? 0.35 : 0, springs.glow);
     }
     function down(event) {
       if (claimed.has(event) || event.button !== 0 || isDisabled(element)) return;
@@ -864,8 +862,11 @@
       view.addEventListener("pointerup", release);
       view.addEventListener("pointercancel", release);
     }
-    function hover() {
-      // Mobile-only: không giữ hiệu ứng hover sau khi chạm
+    function hover(event) {
+      if (event.pointerType === "touch" || !view.matchMedia(HOVER_QUERY).matches) return;
+      hovering = event.type !== "pointerleave";
+      if (hovering) light(event.clientX, event.clientY);
+      if (!pointer && !keyboard) set(glow, hovering ? 0.35 : 0, springs.glow);
     }
     function key(event) {
       if (event.key !== " " && event.key !== "Enter") return;
@@ -881,7 +882,7 @@
       } else if (keyboard) {
         keyboard = false;
         set(press, 0, springs.release);
-        set(glow, 0, springs.glow);
+        set(glow, hovering ? 0.35 : 0, springs.glow);
       }
     }
     function drag(event) {
@@ -1220,17 +1221,9 @@
       const spec =
         material === "regular" ? (dark ? MATERIALS.regular.dark : MATERIALS.regular.light) : null;
       const cssTone = tintRGB
-        ? `saturate(1.8) brightness(0.64) contrast(1.18)`
+        ? `saturate(1.35) brightness(0.36)`
         : `saturate(${saturation}) brightness(${dark ? brightness * 0.88 : brightness})`;
-      const clearFrostBlur = Math.max(3, Math.min(4.5, (blur || 1.8) * 2));
-      const engineBlur =
-        material === "clear"
-          ? tintRGB
-            ? 4
-            : clearFrostBlur
-          : this.engine === "webkit"
-          ? Math.min(fallbackBlur, 16)
-          : fallbackBlur;
+      const engineBlur = this.engine === "webkit" ? Math.min(fallbackBlur, 16) : fallbackBlur;
       const backdrop = refracting
         ? `url(#${filterId})`
         : material === "regular"
@@ -1248,38 +1241,35 @@
       this.overlayEl.style.backgroundImage = overlay ? `url(${overlay})` : "none";
 
       // Fills & veils (underneath overlayEl specular rim)
-      this.fillEl.style.backgroundImage = "none";
       if (veil) {
         this.fillEl.style.display = "block";
         this.fillEl.style.clipPath = outline.polygon;
         this.fillEl.style.backgroundColor = veil;
-      } else if (!refracting && (material === "regular" || dark || tintRGB)) {
+      } else if (!refracting && tintRGB) {
         this.fillEl.style.display = "block";
         this.fillEl.style.clipPath = outline.polygon;
-        if (tintRGB) {
-          const op = material === "regular" ? spec.fillOpacity : 0.66;
-          const maxC = Math.max(tintRGB[0], tintRGB[1], tintRGB[2], 1e-5);
-          const deepRGB = tintRGB
-            .map((c) =>
-              Math.min(255, Math.round(255 * Math.min(1, maxC * 1.15) * Math.pow(c / maxC, 1.8)))
-            )
-            .join(" ");
-          this.fillEl.style.backgroundColor = `rgb(${deepRGB} / ${op})`;
-          this.fillEl.style.backgroundImage =
-            "linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 42%, rgba(0, 0, 0, 0.08) 100%)";
-        } else if (material === "regular") {
-          this.fillEl.style.backgroundColor = dark
-            ? `rgb(16 16 18 / ${spec.fillOpacity})`
-            : `rgb(255 255 255 / ${spec.fillOpacity})`;
-        } else {
-          this.fillEl.style.backgroundColor = "rgb(8 8 10 / 0.16)";
-        }
-      } else if (refracting && material === "clear" && !tintRGB) {
+        const op = material === "regular" ? spec.fillOpacity : 0.88;
+        this.fillEl.style.backgroundColor = `rgb(${tintRGB
+          .map((c) => Math.round(c * 255))
+          .join(" ")} / ${op})`;
+      } else if (!refracting && material === "regular") {
         this.fillEl.style.display = "block";
         this.fillEl.style.clipPath = outline.polygon;
         this.fillEl.style.backgroundColor = dark
-          ? "rgb(20 20 24 / 0.28)"
-          : "rgb(255 255 255 / 0.08)";
+          ? `rgb(16 16 18 / ${spec.fillOpacity})`
+          : `rgb(255 255 255 / ${spec.fillOpacity})`;
+      } else if (material === "clear" && !tintRGB) {
+        this.fillEl.style.display = "block";
+        this.fillEl.style.clipPath = outline.polygon;
+        if (refracting) {
+          this.fillEl.style.backgroundColor = dark
+            ? "rgb(20 20 24 / 0.28)"
+            : "rgb(255 255 255 / 0.08)";
+        } else {
+          this.fillEl.style.backgroundColor = dark
+            ? "rgb(24 24 28 / 0.44)"
+            : "rgb(255 255 255 / 0.22)";
+        }
       } else {
         this.fillEl.style.display = "none";
       }
