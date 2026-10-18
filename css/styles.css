@@ -988,22 +988,15 @@ details.format pre {
 /* ---------- Helpers (desktop mặc định) ---------- */
 .back-ico { display: block; width: 1.25rem; height: 1.25rem; }
 .txt-short { display: none; }
+.brand-dot { display: none; }
 
-/* ---------- Mobile: nút nổi, kính mờ ---------- */
+/* ---------- Mobile: Apple Tahoe Liquid Glass Top Bar & Bottom Nav ---------- */
 @media (max-width: 820px) {
   html { font-size: 17px; }
 
-  /* Kính mờ dùng chung (liquid glass kiểu Telegram: trong hơn, blur nhẹ nhàng thanh thoát, viền sáng) */
-  .topbar-left, .actions, .nav, .setup-footer, .btn-submit-pill, .mobile-dock {
-    background: var(--glass);
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
-    backdrop-filter: blur(14px) saturate(160%);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
-  }
-
-  /* ----- Mobile Scrim: PROGRESSIVE BLUR (mờ dần theo cấp độ) thay cho fade đen -----
-     4 lớp backdrop-filter chồng nhau, độ blur dịu nhẹ tinh tế, không bị mờ đục quá mức */
+  /* ----- Mobile Scrim: PROGRESSIVE BLUR dịu nhẹ ở sát mép trên/dưới -----
+     Giữ hiệu ứng mờ dần kiểu Telegram ở mép màn hình nhưng đủ trong suốt để
+     các nút Liquid Glass khúc xạ (refract) sắc nét chữ & màu sắc đi qua bên dưới */
   .mobile-scrim {
     display: block;
     position: fixed;
@@ -1026,10 +1019,10 @@ details.format pre {
     height: max(3.95rem, calc(2.8rem + env(safe-area-inset-bottom)));
   }
 
-  .mobile-scrim > i:nth-child(1) { -webkit-backdrop-filter: blur(0.8px); backdrop-filter: blur(0.8px); }
-  .mobile-scrim > i:nth-child(2) { -webkit-backdrop-filter: blur(1.8px); backdrop-filter: blur(1.8px); }
-  .mobile-scrim > i:nth-child(3) { -webkit-backdrop-filter: blur(3.6px); backdrop-filter: blur(3.6px); }
-  .mobile-scrim > i:nth-child(4) { -webkit-backdrop-filter: blur(7px);   backdrop-filter: blur(7px); }
+  .mobile-scrim > i:nth-child(1) { -webkit-backdrop-filter: blur(0.5px); backdrop-filter: blur(0.5px); }
+  .mobile-scrim > i:nth-child(2) { -webkit-backdrop-filter: blur(1.2px); backdrop-filter: blur(1.2px); }
+  .mobile-scrim > i:nth-child(3) { -webkit-backdrop-filter: blur(2.4px); backdrop-filter: blur(2.4px); }
+  .mobile-scrim > i:nth-child(4) { -webkit-backdrop-filter: blur(4.2px); backdrop-filter: blur(4.2px); }
 
   .mobile-scrim-top > i:nth-child(1) { -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%); mask-image: linear-gradient(to bottom, #000 0%, #000 80%, transparent 100%); }
   .mobile-scrim-top > i:nth-child(2) { -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 65%, transparent 92%); mask-image: linear-gradient(to bottom, #000 0%, #000 65%, transparent 92%); }
@@ -1041,142 +1034,228 @@ details.format pre {
   .mobile-scrim-bottom > i:nth-child(3) { -webkit-mask-image: linear-gradient(to top, #000 0%, #000 25%, transparent 65%); mask-image: linear-gradient(to top, #000 0%, #000 25%, transparent 65%); }
   .mobile-scrim-bottom > i:nth-child(4) { -webkit-mask-image: linear-gradient(to top, #000 0%, #000 10%, transparent 45%); mask-image: linear-gradient(to top, #000 0%, #000 10%, transparent 45%); }
 
-  /* Lớp phủ màu nền rất mỏng (không phải đen): giúp mép "tan" vào nền như Telegram */
   .mobile-scrim-top > .scrim-veil { background: var(--veil-top); }
   .mobile-scrim-bottom > .scrim-veil { background: var(--veil-bottom); }
 
-  /* Chế độ toàn màn hình (Thêm vào MH chính), Light mode: status bar iOS chữ trắng
-     -> chỉ thêm một chút tông tối ở sát đỉnh để vẫn đọc được giờ/wifi/pin */
   @media (display-mode: standalone) {
     html:not([data-theme="dark"]) .mobile-scrim-top > .scrim-veil {
       background:
-        linear-gradient(to bottom, rgba(30, 32, 40, .30) 0%, rgba(30, 32, 40, .12) 28%, rgba(30, 32, 40, 0) 55%),
+        linear-gradient(to bottom, rgba(30, 32, 40, .28) 0%, rgba(30, 32, 40, .10) 28%, rgba(30, 32, 40, 0) 55%),
         var(--veil-top);
     }
   }
 
-  /* ----- Top bar nổi ----- */
+  /* ====================================================================
+     PATTERN 1: FLOATING TOP BAR ICON & PILL BUTTONS (LIQUID GLASS)
+     ==================================================================== */
   .topbar {
     position: fixed; left: 0; right: 0; top: 0;
-    background: transparent; border: 0;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
     pointer-events: none;
-    z-index: 25;
+    z-index: 30;
   }
   .topbar-inner {
-    max-width: none; gap: .4rem;
-    /* Nhích lên sát thanh trạng thái hơn (trước: .6rem + safe-area) */
-    padding: max(.6rem, calc(env(safe-area-inset-top) - .35rem)) .75rem 0;
+    max-width: none;
+    gap: .45rem;
+    padding: max(.65rem, calc(env(safe-area-inset-top) - .25rem)) .85rem 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
   }
-  .topbar-left, .actions {
-    pointer-events: auto;
-    height: 2.7rem; padding: 3px;
-    border-radius: 999px;
-    flex-shrink: 0;
-  }
-  .topbar-left {
-    gap: 0;
-    display: inline-flex; align-items: center;
-  }
-  body[data-view="quiz"] .topbar-left {
-    min-width: 2.7rem; width: 2.7rem; justify-content: center;
-  }
-  .brand { font-size: 1.05rem; padding: 0 .8rem; }
-  .topbar-left #btn-back-setup:not([hidden]) ~ .brand { display: none; }
 
-  #btn-back-setup {
-    width: 2.2rem; height: 2.2rem; padding: 0;
-    background: transparent; border: 0; border-radius: 50%;
-    display: inline-flex; align-items: center; justify-content: center;
-  }
-  #btn-back-setup:hover:not(:disabled) { background: var(--hover-tint); }
-
-  /* Mobile: Ẩn hoàn toàn pill chế độ Thi thử / Luyện tập */
-  .quiz-status-mid { display: none !important; }
-
+  /* Khung chứa hai bên Top Bar trong suốt */
+  .topbar-left,
   .topbar-right {
-    display: inline-flex; align-items: center; gap: .45rem;
-    pointer-events: auto; margin-left: auto;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-width: 0 !important;
+    width: auto !important;
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    pointer-events: none;
+  }
+  .topbar-right {
+    margin-left: auto;
   }
 
+  /* Các bề mặt Liquid Glass trên Top Bar */
+  #brand-title,
+  #btn-back-setup,
+  .actions,
+  #btn-topbar-submit {
+    pointer-events: auto;
+    position: relative;
+    isolation: isolate;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: 9999px !important;
+    box-shadow: var(--lg-shadow);
+    color: var(--text);
+    flex-shrink: 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  /* Nút bấm trên Top Bar tắt active scale mặc định để nhường cho Spring Physics của Liquid Glass */
+  #btn-back-setup:active,
+  .actions:active,
+  #btn-reopen-result:active,
+  #btn-pos:active,
+  #btn-import:active,
+  #btn-theme:active,
+  #btn-topbar-submit:active,
+  #dock-btn-start:active,
+  #dock-btn-prev:active,
+  #dock-btn-next:active {
+    transform: none;
+  }
+
+  /* 1. Pill tiêu đề (KTCT Mác - Lênin) ở màn hình Setup */
+  #brand-title {
+    height: 2.65rem;
+    padding: 0 1rem;
+    display: inline-flex;
+    align-items: center;
+    font-size: 1rem;
+    font-weight: 700;
+    letter-spacing: .01em;
+  }
+  body[data-view="quiz"] #brand-title {
+    display: none !important;
+  }
+
+  /* 2. Nút tròn Back (<) độc lập ở góc trái khi làm bài */
+  #btn-back-setup {
+    width: 2.65rem !important;
+    min-width: 2.65rem !important;
+    height: 2.65rem !important;
+    padding: 0 !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #btn-back-setup svg {
+    width: 1.18rem;
+    height: 1.18rem;
+  }
+
+  /* 3. Cụm pill gộp (.actions): Gộp [+ ☾] ở đầu trang và [⊞ Danh sách câu ☾] khi làm bài */
   .actions {
-    gap: 2px;
-    display: inline-flex; align-items: center; justify-content: center;
-    min-width: 2.7rem;
+    height: 2.65rem !important;
+    min-width: 2.65rem !important;
+    padding: 3px !important;
+    gap: 2px !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
   .actions .icon-btn {
-    width: 2.2rem; min-width: 2.2rem; height: 2.2rem; padding: 0;
-    border: 0; border-radius: 50%;
-    display: inline-flex; align-items: center; justify-content: center;
+    width: 2.2rem !important;
+    min-width: 2.2rem !important;
+    height: 2.2rem !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    border-radius: 50% !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
-  .actions .icon-btn:hover { background: var(--hover-tint); }
-  body[data-view="quiz"] #btn-import { display: none !important; }
+  .actions .icon-btn:hover {
+    background: var(--hover-tint) !important;
+  }
+  .actions .icon-btn svg {
+    width: 1.15rem;
+    height: 1.15rem;
+  }
+  body[data-view="quiz"] #btn-import {
+    display: none !important;
+  }
 
+  /* Đồng hồ đếm ngược (Thi thử) nằm gọn bên trong pill .actions */
   .timer {
-    border: 0; background: transparent; padding: 0 .4rem 0 .5rem;
-    gap: .25rem; font-size: .95rem;
+    height: 2.2rem;
+    padding: 0 .42rem 0 .58rem;
+    border: 0 !important;
+    background: transparent !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .28rem;
+    font-size: .92rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
   }
-  .timer-ico { width: 1.05rem; height: 1.05rem; }
+  .timer-ico { width: 1.02rem; height: 1.02rem; }
 
-  /* Nút nộp bài riêng biệt trên mobile, nằm ở bên phải cuối cùng - Liquid glass đồng bộ 100% với các pill cùng hàng */
+  /* Nút vị trí câu (1 / 100) nằm gọn bên trong pill .actions */
+  #btn-pos {
+    height: 2.2rem;
+    padding: 0 .68rem;
+    border: 0 !important;
+    background: transparent !important;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .35rem;
+    font-weight: 700;
+    font-size: .92rem;
+    color: var(--text);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+  }
+  #btn-pos:hover { background: var(--hover-tint) !important; }
+  #btn-pos svg { width: 1.02rem; height: 1.02rem; }
+  #btn-pos[hidden] { display: none !important; }
+
+  /* Nút Xem lại Kết quả nằm gọn bên trong pill .actions */
+  .btn-reopen-result {
+    height: 2.2rem;
+    padding: 0 .68rem;
+    border: 0 !important;
+    background: transparent !important;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .32rem;
+    font-size: .92rem;
+    font-weight: 700;
+  }
+  .btn-reopen-result:hover { background: var(--hover-tint) !important; }
+  .btn-reopen-result svg { width: 1.02rem; height: 1.02rem; }
+
+  /* 4. Pill Nộp bài trên Top Bar — Clear Liquid Glass kèm sắc xanh/đỏ siêu nhẹ (trong .lg-fill) */
   .btn-submit-pill {
-    pointer-events: auto;
-    height: 2.7rem; padding: 0 1rem; border-radius: 999px;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: .95rem; font-weight: 700;
-    flex-shrink: 0;
-    background: var(--glass);
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
-    backdrop-filter: blur(14px) saturate(160%);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
-    color: var(--accent);
-    transition: background .15s, border-color .15s, color .15s, transform .1s ease, box-shadow .15s;
-  }
-  .btn-submit-pill:hover:not(:disabled) {
-    background: var(--hover-tint);
-  }
-  .btn-submit-pill:active:not(:disabled) {
-    transform: scale(0.92);
+    height: 2.65rem;
+    padding: 0 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .94rem;
+    font-weight: 700;
   }
   .btn-submit-pill.btn-primary {
-    background: linear-gradient(135deg, var(--glass-accent), var(--glass-accent)), var(--glass);
-    color: var(--accent);
-    border-color: var(--glass-accent-border);
-  }
-  .btn-submit-pill.btn-primary:hover:not(:disabled) {
-    background: linear-gradient(135deg, var(--glass-accent), var(--glass-accent)), var(--hover-tint);
+    color: var(--accent) !important;
+    background: transparent !important;
   }
   .btn-submit-pill.btn-danger {
-    background: linear-gradient(135deg, var(--glass-danger), var(--glass-danger)), var(--glass);
-    color: var(--bad);
-    border-color: var(--glass-danger-border);
-  }
-  .btn-submit-pill.btn-danger:hover:not(:disabled) {
-    background: linear-gradient(135deg, var(--glass-danger), var(--glass-danger)), var(--hover-tint);
+    color: var(--bad) !important;
+    background: transparent !important;
   }
 
-  .btn-reopen-result {
-    pointer-events: auto;
-    height: 2.7rem; padding: 0 .95rem; border-radius: 999px;
-    display: inline-flex; align-items: center; gap: .35rem;
-    font-size: .95rem; font-weight: 700;
-    flex-shrink: 0;
-    background: var(--glass);
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
-    backdrop-filter: blur(14px) saturate(160%);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
-    color: var(--text);
-  }
-  .btn-reopen-result:hover {
-    background: var(--hover-tint); border-color: var(--accent); color: var(--accent);
-  }
-  .btn-reopen-result svg { width: 1.05rem; height: 1.05rem; }
   .txt-long { display: none; }
   .txt-short { display: inline; }
+  .quiz-status-mid { display: none !important; }
 
   .topbar .progress {
     position: absolute; top: 0; left: 0; right: 0; height: 3px; background: transparent;
@@ -1185,7 +1264,7 @@ details.format pre {
   /* ----- Màn hình chọn đề ----- */
   .setup-container {
     margin: 0 auto;
-    padding: calc(4.2rem + env(safe-area-inset-top)) .75rem 6.5rem;
+    padding: calc(4.3rem + env(safe-area-inset-top)) .75rem 6.8rem;
   }
   .setup-card { padding: 1rem .9rem; }
   .setup-header { margin-bottom: .35rem; }
@@ -1234,113 +1313,137 @@ details.format pre {
   /* ----- Màn hình làm bài ----- */
   .layout {
     grid-template-columns: minmax(0, 1fr); gap: 0;
-    padding: calc(4.6rem + env(safe-area-inset-top)) .75rem 6.5rem;
+    padding: calc(4.6rem + env(safe-area-inset-top)) .75rem 6.8rem;
   }
   .card { padding: 1.1rem 1rem 1.25rem; }
   .question { font-size: 1.25rem; }
   .option { padding: .7rem .8rem; font-size: 1.05rem; }
   .ch-name, .of { display: none; }
+  .nav-pos-desktop { display: none; }
 
   /* ====================================================================
-     THANH ĐIỀU HƯỚNG NỔI LIÊN TỤC TRÊN MOBILE (PERSISTENT DOCK)
-     Khắc phục triệt để hiện tượng biến mất / chớp giật khi chuyển tab:
-     Container cố định vĩnh viễn ở đáy, chỉ các nút bên trong crossfade mượt mà
+     PATTERN 2: BOTTOM SPLIT ACTION BAR (LIQUID GLASS PILLS)
+     Không bọc trong hộp kính chung — từng viên thuốc nổi trực tiếp trên
+     nội dung cuộn để khúc xạ chữ/màu sắc qua mép squircle bezel
      ==================================================================== */
   .mobile-dock {
     position: fixed !important;
-    z-index: 25;
+    z-index: 30;
     margin: 0;
-    padding: .4rem;
-    left: .75rem;
-    right: .75rem;
-    bottom: max(.45rem, calc(env(safe-area-inset-bottom) - .7rem));
-    height: 3.45rem;
-    border-radius: 20px;
-    background: var(--glass);
-    -webkit-backdrop-filter: blur(14px) saturate(160%);
-    backdrop-filter: blur(14px) saturate(160%);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
+    padding: 0;
+    left: .85rem;
+    right: .85rem;
+    bottom: max(.65rem, calc(env(safe-area-inset-bottom) - .4rem));
+    height: 3.35rem;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
     display: flex !important;
     align-items: center;
     justify-content: center;
-    box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible !important;
+    pointer-events: none;
   }
 
   .dock-panel {
-    position: absolute;
-    inset: .4rem;
-    display: flex;
+    width: 100%;
+    height: 100%;
+    display: none;
     align-items: center;
-    gap: .4rem;
-    transition: opacity .24s cubic-bezier(0.16, 1, 0.3, 1), transform .24s cubic-bezier(0.16, 1, 0.3, 1);
-    will-change: opacity, transform;
+    gap: .7rem;
+    pointer-events: none;
   }
 
   body[data-view="setup"] .dock-panel-setup {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-  }
-  body[data-view="setup"] .dock-panel-quiz {
-    opacity: 0;
-    transform: translateY(12px);
-    pointer-events: none;
-  }
-
-  body[data-view="quiz"] .dock-panel-setup {
-    opacity: 0;
-    transform: translateY(-12px);
-    pointer-events: none;
+    display: flex;
   }
   body[data-view="quiz"] .dock-panel-quiz {
-    opacity: 1;
-    transform: translateY(0);
+    display: flex;
+  }
+
+  /* Các nút Liquid Glass dưới Bottom Bar */
+  #dock-btn-start,
+  #dock-btn-prev,
+  #dock-btn-next {
     pointer-events: auto;
-  }
-
-  .dock-panel-setup .start-btn {
-    width: 100%;
-    height: 100%;
-    margin: 0;
-    padding: 0 1rem;
-    font-size: 1.1rem;
-    border-radius: 14px;
-    display: flex;
+    position: relative;
+    isolation: isolate;
+    height: 3.35rem;
+    border-radius: 9999px !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: var(--lg-shadow) !important;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-  }
-
-  .dock-panel-quiz .btn {
-    min-width: 0;
-    flex: 1;
-    height: 100%;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
+    gap: .5rem;
     font-weight: 700;
+    user-select: none;
+    -webkit-user-select: none;
   }
-  .dock-panel-quiz .btn:not(.btn-primary):not(.btn-danger) {
-    background: transparent;
-    border-color: transparent;
+
+  /* Giữ opacity: 1 trên nút cha khi disabled để KHÔNG tạo CSS Backdrop Root làm mất khúc xạ Liquid Glass (.lg-lens), chỉ làm mờ chữ/icon bên trong */
+  #dock-btn-start:disabled,
+  #dock-btn-prev:disabled,
+  #dock-btn-next:disabled {
+    opacity: 1 !important;
   }
-  .dock-panel-quiz .btn:not(.btn-primary):not(.btn-danger):hover:not(:disabled) {
-    background: var(--hover-tint);
+  #dock-btn-start:disabled .dock-btn-label,
+  #dock-btn-start:disabled .lg-chevrons,
+  #dock-btn-prev:disabled .dock-btn-label,
+  #dock-btn-prev:disabled .dock-prev-ico,
+  #dock-btn-next:disabled .dock-btn-label,
+  #dock-btn-next:disabled .lg-chevrons {
+    opacity: .42;
   }
-  .nav-pos-desktop { display: none; }
-  #btn-pos {
-    display: inline-flex; align-items: center; gap: .35rem;
-    height: 2.2rem; padding: 0 .65rem;
-    background: transparent; border: 0; border-radius: 999px;
-    font-weight: 700; font-size: .95rem; color: var(--text);
-    font-variant-numeric: tabular-nums; cursor: pointer;
+
+  /* Setup CTA Pill: Full-width Tinted Liquid Glass */
+  #dock-btn-start {
+    width: 100%;
+    padding: 0 1.5rem;
+    font-size: 1.05rem;
+    color: #ffffff !important;
   }
-  #btn-pos:hover { background: var(--hover-tint); }
-  #btn-pos svg { width: 1.05rem; height: 1.05rem; }
-  #btn-pos[hidden] { display: none !important; }
+
+  /* Quiz Left Pill: Clear Glass Secondary Pill (như nút "Size: 12" trong ảnh mẫu) */
+  #dock-btn-prev {
+    flex: 0 0 auto;
+    min-width: 7.5rem;
+    padding: 0 1.35rem;
+    font-size: 1rem;
+    color: var(--text) !important;
+  }
+  #dock-btn-prev .dock-prev-ico {
+    width: 1.1rem;
+    height: 1.1rem;
+    stroke-width: 2.2;
+  }
+
+  /* Quiz Right Pill: Tinted Liquid Glass Primary CTA Pill (như nút "Add to Cart >>>" trong ảnh mẫu) */
+  #dock-btn-next {
+    flex: 1;
+    padding: 0 1.5rem;
+    font-size: 1.04rem;
+    color: #ffffff !important;
+  }
+
+  /* Cụm 3 mũi tên >>> mờ dần đặc trưng của nút CTA trong ảnh mẫu */
+  .lg-chevrons {
+    display: inline-flex;
+    align-items: center;
+    margin-left: .15rem;
+  }
+  .lg-chevrons svg {
+    width: .95rem;
+    height: .95rem;
+    stroke-width: 2.3;
+    margin-left: -.42rem;
+  }
+  .lg-chevrons svg:nth-child(1) { margin-left: 0; opacity: 1; }
+  .lg-chevrons svg:nth-child(2) { opacity: .65; }
+  .lg-chevrons svg:nth-child(3) { opacity: .35; }
 
   /* Danh sách câu: thẻ nổi */
   .backdrop {

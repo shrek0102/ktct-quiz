@@ -431,18 +431,20 @@ const App = {
     if ($('#btn-pos')) $('#btn-pos').hidden = !isQuiz;
 
     const submitBtn = $('#btn-topbar-submit');
+    const brandTextEl = $('#brand-title-text') || $('#brand-title');
 
     if (!isQuiz) {
-      $('#brand-title').textContent = 'KTCT Mác - Lênin';
+      if (brandTextEl) brandTextEl.textContent = 'KTCT Mác - Lênin';
       $('#exam-timer').hidden = true;
       if (submitBtn) submitBtn.hidden = true;
       if ($('#btn-reopen-result')) $('#btn-reopen-result').hidden = true;
+      if (window.LiquidGlass) window.LiquidGlass.refresh();
       return;
     }
 
     // Khi đang trong màn hình quiz: brand-title bên trái hiển thị chế độ hiện tại
     const modeTitle = (this.mode === 'exam') ? 'Thi thử' : (this.mode === 'review' ? 'Xem lại bài' : 'Luyện tập');
-    $('#brand-title').textContent = modeTitle;
+    if (brandTextEl) brandTextEl.textContent = modeTitle;
 
     if (this.mode === 'exam') {
       $('#exam-timer').hidden = false;
@@ -464,6 +466,7 @@ const App = {
       }
       if ($('#btn-reopen-result')) $('#btn-reopen-result').hidden = true;
     }
+    if (window.LiquidGlass) window.LiquidGlass.refresh();
   },
 
   renderSetup() {
@@ -566,13 +569,23 @@ const App = {
     }
     const startDisabled = (selCount === 0);
 
-    document.querySelectorAll('#btn-start, #dock-btn-start').forEach(btn => {
-      btn.textContent = startText;
-      btn.disabled = startDisabled;
-    });
+    const desktopStartBtn = $('#btn-start');
+    if (desktopStartBtn) {
+      desktopStartBtn.textContent = startText;
+      desktopStartBtn.disabled = startDisabled;
+    }
+    const dockStartBtn = $('#dock-btn-start');
+    if (dockStartBtn) {
+      const lbl = $('#dock-start-label') || dockStartBtn;
+      lbl.textContent = startText;
+      dockStartBtn.disabled = startDisabled;
+      dockStartBtn.classList.toggle('btn-danger', this.setupMode === 'exam');
+      dockStartBtn.classList.toggle('btn-primary', this.setupMode !== 'exam');
+    }
 
     // Tự động lưu trạng thái thiết lập để không bị mất khi reload
     this.saveSetupPrefs();
+    if (window.LiquidGlass) window.LiquidGlass.refresh();
   },
 
   renderSetupGrid() {
@@ -893,27 +906,43 @@ const App = {
     if ($('#nav-pos-desktop')) $('#nav-pos-desktop').textContent = posStr;
 
     const last = (this.index === n - 1);
-    const nextBtns = document.querySelectorAll('#btn-next, #dock-btn-next');
+    const desktopNextBtn = $('#btn-next');
+    const dockNextBtn = $('#dock-btn-next');
+    const dockNextLabel = $('#dock-next-label');
+
     if (last && this.mode !== 'review') {
-      const cls = 'btn ' + (this.mode === 'exam' ? 'btn-danger' : 'btn-primary');
-      nextBtns.forEach(b => {
-        b.textContent = 'Nộp bài';
-        b.dataset.action = 'confirmSubmit';
-        b.className = cls;
-        b.disabled = false;
-      });
+      const modeCls = (this.mode === 'exam' ? 'btn-danger' : 'btn-primary');
+      if (desktopNextBtn) {
+        desktopNextBtn.textContent = 'Nộp bài';
+        desktopNextBtn.dataset.action = 'confirmSubmit';
+        desktopNextBtn.className = 'btn ' + modeCls;
+        desktopNextBtn.disabled = false;
+      }
+      if (dockNextBtn) {
+        if (dockNextLabel) dockNextLabel.textContent = 'Nộp bài';
+        dockNextBtn.dataset.action = 'confirmSubmit';
+        dockNextBtn.className = 'btn ' + modeCls + ' btn-dock-next';
+        dockNextBtn.disabled = false;
+      }
     } else {
-      nextBtns.forEach(b => {
-        b.textContent = 'Sau →';
-        b.dataset.action = 'next';
-        b.className = 'btn btn-primary';
-        b.disabled = last;
-      });
+      if (desktopNextBtn) {
+        desktopNextBtn.textContent = 'Sau →';
+        desktopNextBtn.dataset.action = 'next';
+        desktopNextBtn.className = 'btn btn-primary';
+        desktopNextBtn.disabled = last;
+      }
+      if (dockNextBtn) {
+        if (dockNextLabel) dockNextLabel.textContent = 'Câu tiếp';
+        dockNextBtn.dataset.action = 'next';
+        dockNextBtn.className = 'btn btn-primary btn-dock-next';
+        dockNextBtn.disabled = last;
+      }
     }
 
     // Palette sidebar & progress bar
     this.renderQuizPalette();
     this.renderQuizProgress();
+    if (window.LiquidGlass) window.LiquidGlass.refresh();
   },
 
   tally() {
