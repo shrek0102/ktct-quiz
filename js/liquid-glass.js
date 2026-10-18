@@ -1220,7 +1220,9 @@
       const refracting = this.mode === "refract" && field !== "";
       const spec =
         material === "regular" ? (dark ? MATERIALS.regular.dark : MATERIALS.regular.light) : null;
-      const cssTone = `saturate(${saturation}) brightness(${dark ? brightness * 0.88 : brightness})`;
+      const cssTone = tintRGB
+        ? `saturate(1.35) brightness(0.36)`
+        : `saturate(${saturation}) brightness(${dark ? brightness * 0.88 : brightness})`;
       const engineBlur = this.engine === "webkit" ? Math.min(fallbackBlur, 16) : fallbackBlur;
       const backdrop = refracting
         ? `url(#${filterId})`
@@ -1243,27 +1245,31 @@
         this.fillEl.style.display = "block";
         this.fillEl.style.clipPath = outline.polygon;
         this.fillEl.style.backgroundColor = veil;
-      } else if (!refracting && (material === "regular" || dark || tintRGB)) {
+      } else if (!refracting && tintRGB) {
         this.fillEl.style.display = "block";
         this.fillEl.style.clipPath = outline.polygon;
-        if (tintRGB) {
-          const op = material === "regular" ? spec.fillOpacity : 0.72;
-          this.fillEl.style.backgroundColor = `rgb(${tintRGB
-            .map((c) => Math.round(c * 255))
-            .join(" ")} / ${op})`;
-        } else if (material === "regular") {
-          this.fillEl.style.backgroundColor = dark
-            ? `rgb(16 16 18 / ${spec.fillOpacity})`
-            : `rgb(255 255 255 / ${spec.fillOpacity})`;
-        } else {
-          this.fillEl.style.backgroundColor = "rgb(8 8 10 / 0.16)";
-        }
-      } else if (refracting && material === "clear" && !tintRGB) {
+        const op = material === "regular" ? spec.fillOpacity : 0.88;
+        this.fillEl.style.backgroundColor = `rgb(${tintRGB
+          .map((c) => Math.round(c * 255))
+          .join(" ")} / ${op})`;
+      } else if (!refracting && material === "regular") {
         this.fillEl.style.display = "block";
         this.fillEl.style.clipPath = outline.polygon;
         this.fillEl.style.backgroundColor = dark
-          ? "rgb(20 20 24 / 0.28)"
-          : "rgb(255 255 255 / 0.08)";
+          ? `rgb(16 16 18 / ${spec.fillOpacity})`
+          : `rgb(255 255 255 / ${spec.fillOpacity})`;
+      } else if (material === "clear" && !tintRGB) {
+        this.fillEl.style.display = "block";
+        this.fillEl.style.clipPath = outline.polygon;
+        if (refracting) {
+          this.fillEl.style.backgroundColor = dark
+            ? "rgb(20 20 24 / 0.28)"
+            : "rgb(255 255 255 / 0.08)";
+        } else {
+          this.fillEl.style.backgroundColor = dark
+            ? "rgb(24 24 28 / 0.44)"
+            : "rgb(255 255 255 / 0.22)";
+        }
       } else {
         this.fillEl.style.display = "none";
       }
