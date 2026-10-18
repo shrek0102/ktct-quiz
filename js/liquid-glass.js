@@ -446,16 +446,8 @@
       fieldCanvas.width = mw;
       fieldCanvas.height = mh;
       const fctx = fieldCanvas.getContext("2d");
-      if (!fctx) return { field: null, overlay: null, bezelMask: null };
+      if (!fctx) return { field: null, overlay: null };
       const fimg = fctx.createImageData(mw, mh);
-
-      const bezelCanvas = document.createElement("canvas");
-      bezelCanvas.width = mw;
-      bezelCanvas.height = mh;
-      const bctx = bezelCanvas.getContext("2d");
-      if (!bctx) return { field: null, overlay: null, bezelMask: null };
-      const bimg = bctx.createImageData(mw, mh);
-      const bdata = bimg.data;
 
       const pad = 2;
       const bw = w + pad * 2,
@@ -467,7 +459,7 @@
       overlayCanvas.width = omw;
       overlayCanvas.height = omh;
       const octx = overlayCanvas.getContext("2d");
-      if (!octx) return { field: null, overlay: null, bezelMask: null };
+      if (!octx) return { field: null, overlay: null };
       const oimg = octx.createImageData(omw, omh);
 
       for (let pass = 0; pass < 2; pass++) {
@@ -501,36 +493,21 @@
               data[o + 1] = Math.round(255 * (0.5 - ny * edge * 0.5));
               data[o + 2] = 128;
               data[o + 3] = Math.round(255 * coverage);
-
-              // Optical Bezel Mask for WebKit multi-zone liquid lens
-              const bezelRing = coverage * sat(pow(edge, 0.72) * 1.18);
-              if (bezelRing > 0.004) {
-                bdata[o] = 255;
-                bdata[o + 1] = 255;
-                bdata[o + 2] = 255;
-                bdata[o + 3] = Math.round(255 * bezelRing);
-              }
             } else {
               const qx = Math.abs(px) - (hw - p),
                 qy = Math.abs(py) - (hh - p);
-              if (Math.max(qx, qy) - p > pad + 10) continue;
+              if (Math.max(qx, qy) - p > pad + 6) continue;
               const coverage = sat(0.5 - d / aa);
               const directional = pow(sat((Math.abs(ny) - COS_SPREAD) / (1 - COS_SPREAD)), 1.25);
               const diffuseDir = pow(sat((Math.abs(ny) - COS_DIFFUSE) / (1 - COS_DIFFUSE)), 1.25);
               const stroke = sat((d + 0.9) / aa + 0.5) * sat(0.5 - d / aa);
               let specular = directional * stroke;
               specular = specular / (1 + 0.5 * (1 - specular));
-              const diffuse = diffuseDir * 0.22 * pow(1 - sat(-d / 5.5), 2) * coverage;
-
-              // 3D curved inner meniscus ring (all around the squircle perimeter)
-              const meniscusBand =
-                !tint ? pow(1 - sat(-d / 7.5), 2.1) * sat(-d / 1.1) * coverage : 0;
-              const meniscusLight = meniscusBand * (dark ? 0.06 : 0.26);
-
+              const diffuse = diffuseDir * 0.18 * pow(1 - sat(-d / 4.5), 2) * coverage;
               const topBias = dark && !tint ? (ny < 0 ? 1.0 : 0.62) : 1.0;
               const specScale = dark && !tint ? 0.28 * topBias : 1.0;
-              const diffScale = dark && !tint ? 0.08 * topBias : 0.9;
-              const highlight = sat(specular * specScale + diffuse * diffScale + meniscusLight);
+              const diffScale = dark && !tint ? 0.08 * topBias : 0.85;
+              const highlight = sat(specular * specScale + diffuse * diffScale);
               const adjusted = d - 0.5;
               const falloff = 1 - sat(-adjusted / 0.5);
               const ramp = (falloff > 0 ? 1 : 0) * 0.25 + falloff * 0.75;
@@ -540,13 +517,8 @@
               const wy = sat((-nx - COS_SIDE) / (1 - COS_SIDE)) * outlineBand;
               const sideShade =
                 (wx / (1 + 0.4 * (1 - wx)) + wy / (1 + 0.4 * (1 - wy))) * (dark ? 0.42 : 0.48);
-              const rimDef = !dark && !tint ? outlineBand * 0.13 : 0;
-              // Inner bezel depth contour (gives the glass lens its 3D curved step at d ~ -6.5px)
-              const innerStep =
-                !dark && !tint
-                  ? pow(sat(1 - Math.abs(d + 6.2) / 3.2), 2) * coverage * 0.055
-                  : 0;
-              const shade = sat(sideShade + rimDef + innerStep);
+              const rimDef = !dark && !tint ? outlineBand * 0.11 : 0;
+              const shade = sat(sideShade + rimDef);
               const alpha = highlight + shade * (1 - highlight);
               if (alpha <= 0.002) continue;
               if (tint) {
@@ -557,26 +529,17 @@
                 data[o + 3] = Math.round(255 * alpha);
               } else {
                 const light = ((dark ? 0.70 : 1) * highlight) / Math.max(alpha, 1e-5);
-                // Subtle chromatic dispersion along the inner curved bezel
-                const disp = meniscusBand * (nx * 0.6 + ny * 0.8) * (dark ? 0.04 : 0.08);
-                data[o] = Math.round(255 * sat(light - disp * 0.9));
-                data[o + 1] = Math.round(255 * sat(light - disp * 0.15));
-                data[o + 2] = Math.round(255 * sat(light + disp * 1.1));
+                data[o] = data[o + 1] = data[o + 2] = Math.round(255 * Math.min(1, light));
                 data[o + 3] = Math.round(255 * alpha);
               }
             }
           }
         }
-        if (isField) {
-          fctx.putImageData(fimg, 0, 0);
-          bctx.putImageData(bimg, 0, 0);
-        } else {
-          octx.putImageData(oimg, 0, 0);
-        }
+        (isField ? fctx : octx).putImageData(img, 0, 0);
       }
-      return { field: fieldCanvas, overlay: overlayCanvas, bezelMask: bezelCanvas };
+      return { field: fieldCanvas, overlay: overlayCanvas };
     } catch {
-      return { field: null, overlay: null, bezelMask: null };
+      return { field: null, overlay: null };
     }
   }
 
@@ -585,64 +548,59 @@
   // --------------------------------------------------------------------------
   const bakeCache = new Map();
   const fieldCache = new Map();
-  const fieldDataCache = new Map();
   const overlayCache = new Map();
-  const bezelCache = new Map();
-  const toneLUTCache = new Map();
 
   function capsuleShape(w, h, radius) {
     return radius >= Math.min(w, h) / 2 - 0.75 && w >= h * 2;
   }
 
-  function sliceCanvas(source, w, h, sourcePad, destPad) {
-    const cap = h / 2;
-    const cw = w + destPad * 2,
-      ch = h + destPad * 2;
-    const scale = pixelScale(cw, ch);
-    const canvas = document.createElement("canvas");
-    canvas.width = Math.max(1, Math.round(cw * scale));
-    canvas.height = Math.max(1, Math.round(ch * scale));
-    const ctx = canvas.getContext("2d");
-    const sh = source.height;
-    const sk = sh / (h + sourcePad * 2);
-    const startX = sourcePad * sk;
-    const capPx = cap * sk;
-    const destCap = cap * scale;
-    const startDest = destPad * scale;
-    const capSrc = startX + capPx;
-    const capDest = Math.round(startDest + destCap);
-    const midDest = Math.max(1, canvas.width - 2 * capDest);
-    ctx.drawImage(source, 0, 0, capSrc, sh, 0, 0, capDest, canvas.height);
-    ctx.drawImage(
-      source,
-      capSrc,
-      0,
-      Math.max(1, source.width - 2 * capSrc),
-      sh,
-      capDest,
-      0,
-      midDest,
-      canvas.height
-    );
-    ctx.drawImage(
-      source,
-      source.width - capSrc,
-      0,
-      capSrc,
-      sh,
-      canvas.width - capDest,
-      0,
-      capDest,
-      canvas.height
-    );
-    return canvas;
-  }
-
   function slicedURLs(baked, w, h) {
+    const cap = h / 2;
+    const bake = (source, sourcePad, destPad) => {
+      const cw = w + destPad * 2,
+        ch = h + destPad * 2;
+      const scale = pixelScale(cw, ch);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(cw * scale));
+      canvas.height = Math.max(1, Math.round(ch * scale));
+      const ctx = canvas.getContext("2d");
+      const sh = source.height;
+      const sk = sh / (h + sourcePad * 2);
+      const startX = sourcePad * sk;
+      const capPx = cap * sk;
+      const destCap = cap * scale;
+      const startDest = destPad * scale;
+      const capSrc = startX + capPx;
+      const capDest = Math.round(startDest + destCap);
+      const midDest = Math.max(1, canvas.width - 2 * capDest);
+      ctx.drawImage(source, 0, 0, capSrc, sh, 0, 0, capDest, canvas.height);
+      ctx.drawImage(
+        source,
+        capSrc,
+        0,
+        Math.max(1, source.width - 2 * capSrc),
+        sh,
+        capDest,
+        0,
+        midDest,
+        canvas.height
+      );
+      ctx.drawImage(
+        source,
+        source.width - capSrc,
+        0,
+        capSrc,
+        sh,
+        canvas.width - capDest,
+        0,
+        capDest,
+        canvas.height
+      );
+      return canvas;
+    };
     return {
-      field: baked.field ? sliceCanvas(baked.field, w, h, 0, 0).toDataURL("image/png") : "",
-      overlay: baked.overlay ? sliceCanvas(baked.overlay, w, h, 2, 2).toDataURL("image/png") : "",
-      bezelMask: baked.bezelMask ? sliceCanvas(baked.bezelMask, w, h, 0, 0).toDataURL("image/png") : "",
+      field: baked.field ? bake(baked.field, 0, 0).toDataURL("image/png") : "",
+      overlay: baked.overlay ? bake(baked.overlay, 2, 2).toDataURL("image/png") : "",
     };
   }
 
@@ -660,9 +618,7 @@
   }
 
   function capsuleBake(h, radius, o) {
-    const key = `bake|h${h}|r${radius}|b${o.bezel}|${o.dark ? "d" : "l"}|${
-      o.tint ? o.tint.join(",") : ""
-    }`;
+    const key = `bake|h${h}|r${radius}|${o.dark ? "d" : "l"}|${o.tint ? o.tint.join(",") : ""}`;
     let baked = bakeCache.get(key);
     if (!baked) {
       baked = renderCanvases(h * 3, h, radius, o.bezel, o.dark, o.tint);
@@ -683,39 +639,6 @@
     });
   }
 
-  function getFieldData(w, h, radius, o) {
-    return remember(fieldDataCache, `fd|${w}x${h}r${radius}b${o.bezel}`, () => {
-      let canvas = null;
-      if (capsuleShape(w, h, radius)) {
-        const baked = capsuleBake(h, radius, o);
-        if (baked.field) canvas = sliceCanvas(baked.field, w, h, 0, 0);
-      } else {
-        const res = renderCanvases(w, h, radius, o.bezel, o.dark, o.tint);
-        canvas = res.field;
-      }
-      if (!canvas) return null;
-      const ctx = canvas.getContext("2d");
-      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      return {
-        width: canvas.width,
-        height: canvas.height,
-        scale: canvas.width / w,
-        data: img.data,
-      };
-    });
-  }
-
-  function bezelURL(w, h, radius, o) {
-    return remember(bezelCache, `bz|${w}x${h}r${radius}b${o.bezel}`, () => {
-      if (capsuleShape(w, h, radius)) {
-        const baked = capsuleBake(h, radius, o);
-        if (baked.bezelMask) return slicedURLs(baked, w, h).bezelMask;
-      }
-      const res = renderCanvases(w, h, radius, o.bezel, o.dark, o.tint);
-      return res.bezelMask ? res.bezelMask.toDataURL("image/png") : "";
-    });
-  }
-
   function overlayURL(w, h, radius, o) {
     return remember(
       overlayCache,
@@ -729,436 +652,6 @@
         return res.overlay ? res.overlay.toDataURL("image/png") : "";
       }
     );
-  }
-
-  // --------------------------------------------------------------------------
-  // WebKit / iOS Safari True Pixel-Displacement Refraction Engine
-  // --------------------------------------------------------------------------
-  function getToneLUT(material, appearance, nested) {
-    const key = `${material}|${appearance}|${nested ? 1 : 0}`;
-    let lut = toneLUTCache.get(key);
-    if (lut) return lut;
-    const vals = toneTable(material, appearance, nested).split(" ").map(Number);
-    const maxIdx = vals.length - 1;
-    lut = new Uint8Array(256);
-    for (let c = 0; c < 256; c++) {
-      const x = (c / 255) * maxIdx;
-      const i = Math.min(maxIdx - 1, Math.floor(x));
-      const f = x - i;
-      const v = vals[i] + f * (vals[i + 1] - vals[i]);
-      lut[c] = Math.round(sat(v) * 255);
-    }
-    toneLUTCache.set(key, lut);
-    return lut;
-  }
-
-  let blurTempBuf = null;
-  function blurRgbaBuffer(data, w, h, radius) {
-    const r = Math.max(1, Math.min(12, Math.round(radius)));
-    const len = w * h * 4;
-    if (!blurTempBuf || blurTempBuf.length < len) {
-      blurTempBuf = new Uint8ClampedArray(len);
-    }
-    const tmp = blurTempBuf;
-    const diam = r * 2 + 1;
-    const inv = 1 / diam;
-
-    // 2-pass separable box blur (approximates Gaussian <feGaussianBlur> on all engines including iOS WebKit)
-    for (let pass = 0; pass < 2; pass++) {
-      // Horizontal: data -> tmp
-      for (let y = 0; y < h; y++) {
-        const rowOff = y * w * 4;
-        let sr = 0,
-          sg = 0,
-          sb = 0;
-        for (let k = -r; k <= r; k++) {
-          const cx = Math.max(0, Math.min(w - 1, k));
-          const idx = rowOff + cx * 4;
-          sr += data[idx];
-          sg += data[idx + 1];
-          sb += data[idx + 2];
-        }
-        for (let x = 0; x < w; x++) {
-          const outIdx = rowOff + x * 4;
-          tmp[outIdx] = (sr * inv + 0.5) | 0;
-          tmp[outIdx + 1] = (sg * inv + 0.5) | 0;
-          tmp[outIdx + 2] = (sb * inv + 0.5) | 0;
-          tmp[outIdx + 3] = 255;
-
-          const leftX = Math.max(0, x - r);
-          const rightX = Math.min(w - 1, x + r + 1);
-          const lIdx = rowOff + leftX * 4;
-          const rIdx = rowOff + rightX * 4;
-          sr += data[rIdx] - data[lIdx];
-          sg += data[rIdx + 1] - data[lIdx + 1];
-          sb += data[rIdx + 2] - data[lIdx + 2];
-        }
-      }
-
-      // Vertical: tmp -> data
-      const stride = w * 4;
-      for (let x = 0; x < w; x++) {
-        const colOff = x * 4;
-        let sr = 0,
-          sg = 0,
-          sb = 0;
-        for (let k = -r; k <= r; k++) {
-          const cy = Math.max(0, Math.min(h - 1, k));
-          const idx = cy * stride + colOff;
-          sr += tmp[idx];
-          sg += tmp[idx + 1];
-          sb += tmp[idx + 2];
-        }
-        for (let y = 0; y < h; y++) {
-          const outIdx = y * stride + colOff;
-          data[outIdx] = (sr * inv + 0.5) | 0;
-          data[outIdx + 1] = (sg * inv + 0.5) | 0;
-          data[outIdx + 2] = (sb * inv + 0.5) | 0;
-          data[outIdx + 3] = 255;
-
-          const topY = Math.max(0, y - r);
-          const botY = Math.min(h - 1, y + r + 1);
-          const tIdx = topY * stride + colOff;
-          const bIdx = botY * stride + colOff;
-          sr += tmp[bIdx] - tmp[tIdx];
-          sg += tmp[bIdx + 1] - tmp[tIdx + 1];
-          sb += tmp[bIdx + 2] - tmp[tIdx + 2];
-        }
-      }
-    }
-  }
-
-  let sharedScratchCanvas = null;
-  let sharedScratchCtx = null;
-  let sharedTextRange = null;
-
-  function drawRoundedRectPath(ctx, x, y, w, h, r) {
-    const rad = Math.max(0, Math.min(r, w * 0.5, h * 0.5));
-    ctx.beginPath();
-    if (rad <= 0.25) {
-      ctx.rect(x, y, w, h);
-    } else if (typeof ctx.roundRect === "function") {
-      ctx.roundRect(x, y, w, h, rad);
-    } else {
-      ctx.moveTo(x + rad, y);
-      ctx.arcTo(x + w, y, x + w, y + h, rad);
-      ctx.arcTo(x + w, y + h, x, y + h, rad);
-      ctx.arcTo(x, y + h, x, y, rad);
-      ctx.arcTo(x, y, x + w, y, rad);
-      ctx.closePath();
-    }
-  }
-
-  function drawInlineSvg(ctx, svgEl, x, y, w, h, cs) {
-    if (w < 1 || h < 1) return;
-    const vbAttr = svgEl.getAttribute("viewBox");
-    let vbW = 24,
-      vbH = 24;
-    if (vbAttr) {
-      const parts = vbAttr.trim().split(/[\s,]+/).map(Number);
-      if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
-        vbW = parts[2];
-        vbH = parts[3];
-      }
-    }
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.scale(w / vbW, h / vbH);
-    const strokeCol = cs.stroke && cs.stroke !== "none" ? cs.stroke : cs.color;
-    const fillCol = cs.fill && cs.fill !== "none" && cs.fill !== "rgb(0, 0, 0)" ? cs.fill : "none";
-    ctx.strokeStyle = strokeCol;
-    ctx.lineWidth = parseFloat(cs.strokeWidth) || 2;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-
-    const shapes = svgEl.children;
-    for (let i = 0; i < shapes.length; i++) {
-      const ch = shapes[i];
-      const tag = ch.tagName.toLowerCase();
-      if (tag === "path") {
-        const d = ch.getAttribute("d");
-        if (d && typeof Path2D !== "undefined") {
-          const p = new Path2D(d);
-          if (fillCol !== "none") {
-            ctx.fillStyle = fillCol;
-            ctx.fill(p);
-          }
-          if (strokeCol !== "none") ctx.stroke(p);
-        }
-      } else if (tag === "polygon" || tag === "polyline") {
-        const pts = (ch.getAttribute("points") || "")
-          .trim()
-          .split(/[\s,]+/)
-          .map(Number);
-        if (pts.length >= 4) {
-          ctx.beginPath();
-          ctx.moveTo(pts[0], pts[1]);
-          for (let j = 2; j < pts.length - 1; j += 2) {
-            ctx.lineTo(pts[j], pts[j + 1]);
-          }
-          if (tag === "polygon") ctx.closePath();
-          if (fillCol !== "none") {
-            ctx.fillStyle = fillCol;
-            ctx.fill();
-          }
-          if (strokeCol !== "none") ctx.stroke();
-        }
-      } else if (tag === "circle") {
-        const cx = parseFloat(ch.getAttribute("cx")) || 0;
-        const cy = parseFloat(ch.getAttribute("cy")) || 0;
-        const r = parseFloat(ch.getAttribute("r")) || 0;
-        if (r > 0) {
-          ctx.beginPath();
-          ctx.arc(cx, cy, r, 0, Math.PI * 2);
-          if (fillCol !== "none") {
-            ctx.fillStyle = fillCol;
-            ctx.fill();
-          }
-          if (strokeCol !== "none") ctx.stroke();
-        }
-      } else if (tag === "rect") {
-        const rx = parseFloat(ch.getAttribute("x")) || 0;
-        const ry = parseFloat(ch.getAttribute("y")) || 0;
-        const rw = parseFloat(ch.getAttribute("width")) || 0;
-        const rh = parseFloat(ch.getAttribute("height")) || 0;
-        const rr = parseFloat(ch.getAttribute("rx")) || 0;
-        drawRoundedRectPath(ctx, rx, ry, rw, rh, rr);
-        if (fillCol !== "none") {
-          ctx.fillStyle = fillCol;
-          ctx.fill();
-        }
-        if (strokeCol !== "none") ctx.stroke();
-      } else if (tag === "line") {
-        const x1 = parseFloat(ch.getAttribute("x1")) || 0;
-        const y1 = parseFloat(ch.getAttribute("y1")) || 0;
-        const x2 = parseFloat(ch.getAttribute("x2")) || 0;
-        const y2 = parseFloat(ch.getAttribute("y2")) || 0;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        if (strokeCol !== "none") ctx.stroke();
-      }
-    }
-    ctx.restore();
-  }
-
-  function rasterizeDOMRegion(ctx, regionLeft, regionTop, regionW, regionH, scale) {
-    const regionRight = regionLeft + regionW;
-    const regionBottom = regionTop + regionH;
-    if (!sharedTextRange) sharedTextRange = document.createRange();
-
-    ctx.save();
-    ctx.setTransform(scale, 0, 0, scale, 0, 0);
-
-    const bodyStyle = getComputedStyle(document.body);
-    ctx.fillStyle = bodyStyle.backgroundColor || "#f5f3ee";
-    ctx.fillRect(0, 0, regionW, regionH);
-
-    const rootBorderCol =
-      getComputedStyle(document.documentElement).getPropertyValue("--border").trim() || "#ddd8cc";
-
-    function drawNode(el) {
-      if (!el || el.nodeType !== 1 || el.hidden) return;
-      if (
-        el.hasAttribute("data-liquid-glass") ||
-        el.classList.contains("topbar") ||
-        el.classList.contains("mobile-dock") ||
-        el.classList.contains("mobile-scrim")
-      ) {
-        return;
-      }
-
-      const cs = getComputedStyle(el);
-      if (cs.display === "none" || cs.visibility === "hidden") return;
-      const op = parseFloat(cs.opacity);
-      if (op <= 0.005) return;
-
-      const rect = el.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) return;
-
-      // Fast spatial culling with 24px margin for pseudo-elements
-      if (
-        rect.bottom < regionTop - 24 ||
-        rect.top > regionBottom + 24 ||
-        rect.right < regionLeft - 24 ||
-        rect.left > regionRight + 24
-      ) {
-        return;
-      }
-
-      const clips =
-        cs.overflowX === "hidden" ||
-        cs.overflowY === "hidden" ||
-        cs.overflowY === "auto" ||
-        cs.overflowY === "scroll";
-      const needsSave = op < 0.999 || clips;
-      if (needsSave) {
-        ctx.save();
-        if (op < 0.999) ctx.globalAlpha *= op;
-      }
-
-      const x = rect.left - regionLeft;
-      const y = rect.top - regionTop;
-      const w = rect.width;
-      const h = rect.height;
-      const rad = Math.min(w * 0.5, h * 0.5, parseFloat(cs.borderTopLeftRadius) || 0);
-
-      // 1. Background fill
-      const bg = cs.backgroundColor;
-      if (bg && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") {
-        ctx.fillStyle = bg;
-        drawRoundedRectPath(ctx, x, y, w, h, rad);
-        ctx.fill();
-      }
-
-      // 2. Borders
-      const bt = parseFloat(cs.borderTopWidth) || 0;
-      const br = parseFloat(cs.borderRightWidth) || 0;
-      const bb = parseFloat(cs.borderBottomWidth) || 0;
-      const bl = parseFloat(cs.borderLeftWidth) || 0;
-      if (bt > 0 && br > 0 && bb > 0 && bl > 0) {
-        ctx.strokeStyle = cs.borderTopColor;
-        ctx.lineWidth = bt;
-        if (cs.borderTopStyle === "dashed") ctx.setLineDash([4, 3]);
-        drawRoundedRectPath(
-          ctx,
-          x + bt * 0.5,
-          y + bt * 0.5,
-          Math.max(0, w - bt),
-          Math.max(0, h - bt),
-          Math.max(0, rad - bt * 0.5)
-        );
-        ctx.stroke();
-        if (cs.borderTopStyle === "dashed") ctx.setLineDash([]);
-      } else {
-        if (bt > 0) {
-          ctx.strokeStyle = cs.borderTopColor;
-          ctx.lineWidth = bt;
-          if (cs.borderTopStyle === "dashed") ctx.setLineDash([4, 3]);
-          ctx.beginPath();
-          ctx.moveTo(x, y + bt * 0.5);
-          ctx.lineTo(x + w, y + bt * 0.5);
-          ctx.stroke();
-          if (cs.borderTopStyle === "dashed") ctx.setLineDash([]);
-        }
-        if (bb > 0) {
-          ctx.strokeStyle = cs.borderBottomColor;
-          ctx.lineWidth = bb;
-          if (cs.borderBottomStyle === "dashed") ctx.setLineDash([4, 3]);
-          ctx.beginPath();
-          ctx.moveTo(x, y + h - bb * 0.5);
-          ctx.lineTo(x + w, y + h - bb * 0.5);
-          ctx.stroke();
-          if (cs.borderBottomStyle === "dashed") ctx.setLineDash([]);
-        }
-        if (bl > 0) {
-          ctx.strokeStyle = cs.borderLeftColor;
-          ctx.lineWidth = bl;
-          if (cs.borderLeftStyle === "dashed") ctx.setLineDash([4, 3]);
-          ctx.beginPath();
-          ctx.moveTo(x + bl * 0.5, y);
-          ctx.lineTo(x + bl * 0.5, y + h);
-          ctx.stroke();
-          if (cs.borderLeftStyle === "dashed") ctx.setLineDash([]);
-        }
-      }
-
-      // 3. Tree item dashed horizontal branch (.tree-item::before)
-      if (el.classList && el.classList.contains("tree-item")) {
-        ctx.strokeStyle = rootBorderCol;
-        ctx.lineWidth = 2;
-        ctx.setLineDash([4, 3]);
-        ctx.beginPath();
-        ctx.moveTo(x - 19.5, y + h * 0.5);
-        ctx.lineTo(x - 5.5, y + h * 0.5);
-        ctx.stroke();
-        ctx.setLineDash([]);
-      }
-
-      const tag = el.tagName.toLowerCase();
-      if (tag === "svg") {
-        drawInlineSvg(ctx, el, x, y, w, h, cs);
-        if (needsSave) ctx.restore();
-        return;
-      }
-
-      if (tag === "input") {
-        if (el.type !== "checkbox" && el.type !== "radio" && el.value) {
-          ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-          ctx.fillStyle = cs.color;
-          ctx.textAlign = "center";
-          ctx.textBaseline = "middle";
-          ctx.fillText(String(el.value), x + w * 0.5, y + h * 0.52);
-        }
-        if (needsSave) ctx.restore();
-        return;
-      }
-
-      if (clips) {
-        drawRoundedRectPath(ctx, x, y, w, h, rad);
-        ctx.clip();
-      }
-
-      const children = el.childNodes;
-      for (let i = 0; i < children.length; i++) {
-        const node = children[i];
-        if (node.nodeType === 1) {
-          drawNode(node);
-        } else if (node.nodeType === 3) {
-          const raw = node.nodeValue;
-          if (!raw || !raw.trim()) continue;
-          sharedTextRange.selectNodeContents(node);
-          const rects = sharedTextRange.getClientRects();
-          if (!rects || rects.length === 0) continue;
-
-          let str = raw.replace(/\s+/g, " ").trim();
-          if (!str) continue;
-          if (cs.textTransform === "uppercase") str = str.toUpperCase();
-
-          ctx.font = `${cs.fontStyle} ${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-          ctx.fillStyle = cs.color;
-          ctx.textAlign = "left";
-          ctx.textBaseline = "middle";
-
-          if (rects.length === 1) {
-            const r0 = rects[0];
-            if (r0.bottom >= regionTop && r0.top <= regionBottom) {
-              ctx.fillText(str, r0.left - regionLeft, r0.top - regionTop + r0.height * 0.52);
-            }
-          } else {
-            // Multi-line wrapped text node (e.g., #q-text or .opt-text)
-            const words = str.split(" ");
-            let wIdx = 0;
-            for (let li = 0; li < rects.length && wIdx < words.length; li++) {
-              const rl = rects[li];
-              const maxW = rl.width + 4;
-              let lineStr = words[wIdx++];
-              while (wIdx < words.length) {
-                const candidate = lineStr + " " + words[wIdx];
-                if (ctx.measureText(candidate).width <= maxW || li === rects.length - 1) {
-                  lineStr = candidate;
-                  wIdx++;
-                } else {
-                  break;
-                }
-              }
-              if (rl.bottom >= regionTop && rl.top <= regionBottom) {
-                ctx.fillText(lineStr, rl.left - regionLeft, rl.top - regionTop + rl.height * 0.52);
-              }
-            }
-          }
-        }
-      }
-
-      if (needsSave) ctx.restore();
-    }
-
-    const setupView = document.getElementById("view-setup");
-    const quizView = document.getElementById("view-quiz");
-    if (setupView && !setupView.hidden) drawNode(setupView);
-    if (quizView && !quizView.hidden) drawNode(quizView);
-
-    ctx.restore();
   }
 
   // --------------------------------------------------------------------------
@@ -1567,39 +1060,6 @@
         transformOrigin: "0 0",
       });
 
-      this.refractCanvasEl = document.createElement("canvas");
-      this.refractCanvasEl.className = "lg-refract-canvas";
-      this.refractCanvasEl.setAttribute("aria-hidden", "true");
-      Object.assign(this.refractCanvasEl.style, {
-        position: "absolute",
-        inset: "0",
-        width: "100%",
-        height: "100%",
-        zIndex: "-1",
-        borderRadius: "inherit",
-        pointerEvents: "none",
-        display: "none",
-      });
-      this.refractCtx = null;
-      this.refractConfig = null;
-      this.outImg = null;
-
-      this.bezelEl = document.createElement("span");
-      this.bezelEl.className = "lg-bezel";
-      this.bezelEl.setAttribute("aria-hidden", "true");
-      Object.assign(this.bezelEl.style, {
-        position: "absolute",
-        inset: "0",
-        zIndex: "-1",
-        borderRadius: "inherit",
-        pointerEvents: "none",
-        display: "none",
-        webkitMaskSize: "100% 100%",
-        maskSize: "100% 100%",
-        webkitMaskRepeat: "no-repeat",
-        maskRepeat: "no-repeat",
-      });
-
       this.overlayEl = document.createElement("span");
       this.overlayEl.className = "lg-overlay";
       this.overlayEl.setAttribute("aria-hidden", "true");
@@ -1638,14 +1098,7 @@
           "radial-gradient(var(--lg-glow-size, 64px) circle at var(--lg-glow-x, 50%) var(--lg-glow-y, 50%), color-mix(in srgb, var(--lg-glow-color, rgba(255,255,255,0.3)) calc(var(--lg-glow, 0) * 100%), transparent), transparent 65%)",
       });
 
-      this.el.prepend(
-        this.lensEl,
-        this.refractCanvasEl,
-        this.fillEl,
-        this.bezelEl,
-        this.overlayEl,
-        this.glowEl
-      );
+      this.el.prepend(this.lensEl, this.fillEl, this.overlayEl, this.glowEl);
       this.el.style.setProperty("--lg-spring", "cubic-bezier(0.175, 0.885, 0.32, 1.275)");
       this.el.style.setProperty(
         "--lg-shadow",
@@ -1769,16 +1222,13 @@
         material === "regular" ? (dark ? MATERIALS.regular.dark : MATERIALS.regular.light) : null;
       const cssTone = tintRGB
         ? `saturate(1.35) brightness(0.36)`
-        : `saturate(${saturation}) contrast(1.04) brightness(${dark ? brightness * 0.9 : brightness})`;
-      const clearBlur = blur !== undefined ? Math.max(1.5, blur) : 2;
+        : `saturate(${saturation}) brightness(${dark ? brightness * 0.88 : brightness})`;
       const engineBlur = this.engine === "webkit" ? Math.min(fallbackBlur, 16) : fallbackBlur;
       const backdrop = refracting
         ? `url(#${filterId})`
-        : tintRGB
-        ? `blur(${engineBlur}px) ${cssTone}`
         : material === "regular"
         ? `blur(${Math.max(2, engineBlur * 0.5)}px) ${cssTone}`
-        : `blur(${clearBlur}px) ${cssTone}`;
+        : `blur(${engineBlur}px) ${cssTone}`;
 
       this.el.setAttribute("data-liquid-glass", refracting ? "refract" : "frost");
       this.el.setAttribute("data-material", material);
@@ -1788,32 +1238,6 @@
       this.lensEl.style.webkitBackdropFilter = backdrop;
       this.lensEl.style.clipPath = outline.polygon;
 
-      // WebKit / iOS Safari True Pixel-Displacement Refraction Canvas
-      if (!refracting) {
-        this.refractConfig = {
-          w,
-          h,
-          radius,
-          planes,
-          material,
-          appearance,
-          dark,
-          tintRGB,
-          nested,
-          amount,
-          dispersion,
-          blur: blur || 0,
-        };
-        this.refractCanvasEl.style.display = "block";
-        this.refractCanvasEl.style.clipPath = outline.polygon;
-        this.bezelEl.style.display = "none";
-        this.renderRefraction();
-      } else {
-        this.refractConfig = null;
-        this.refractCanvasEl.style.display = "none";
-        this.bezelEl.style.display = "none";
-      }
-
       this.overlayEl.style.backgroundImage = overlay ? `url(${overlay})` : "none";
 
       // Fills & veils (underneath overlayEl specular rim)
@@ -1821,18 +1245,31 @@
         this.fillEl.style.display = "block";
         this.fillEl.style.clipPath = outline.polygon;
         this.fillEl.style.backgroundColor = veil;
-      } else if (material === "clear" && !tintRGB) {
+      } else if (!refracting && tintRGB) {
         this.fillEl.style.display = "block";
         this.fillEl.style.clipPath = outline.polygon;
-        this.fillEl.style.backgroundColor = dark
-          ? "rgb(20 20 24 / 0.28)"
-          : "rgb(255 255 255 / 0.06)";
-      } else if (!refracting && material === "regular" && !tintRGB) {
+        const op = material === "regular" ? spec.fillOpacity : 0.88;
+        this.fillEl.style.backgroundColor = `rgb(${tintRGB
+          .map((c) => Math.round(c * 255))
+          .join(" ")} / ${op})`;
+      } else if (!refracting && material === "regular") {
         this.fillEl.style.display = "block";
         this.fillEl.style.clipPath = outline.polygon;
         this.fillEl.style.backgroundColor = dark
           ? `rgb(16 16 18 / ${spec.fillOpacity})`
           : `rgb(255 255 255 / ${spec.fillOpacity})`;
+      } else if (material === "clear" && !tintRGB) {
+        this.fillEl.style.display = "block";
+        this.fillEl.style.clipPath = outline.polygon;
+        if (refracting) {
+          this.fillEl.style.backgroundColor = dark
+            ? "rgb(20 20 24 / 0.28)"
+            : "rgb(255 255 255 / 0.08)";
+        } else {
+          this.fillEl.style.backgroundColor = dark
+            ? "rgb(24 24 28 / 0.44)"
+            : "rgb(255 255 255 / 0.22)";
+        }
       } else {
         this.fillEl.style.display = "none";
       }
@@ -1841,125 +1278,6 @@
         "--lg-glow-color",
         dark ? "rgb(255 255 255 / 0.18)" : "rgb(255 255 255 / 0.32)"
       );
-    }
-
-    renderRefraction() {
-      if (this.disposed || !this.refractConfig) return;
-      const rect = this.lensEl.getBoundingClientRect();
-      if (rect.width < 2 || rect.height < 2) return;
-
-      const {
-        w,
-        h,
-        radius,
-        planes,
-        material,
-        appearance,
-        tintRGB,
-        nested,
-        amount,
-        dispersion,
-        blur,
-      } = this.refractConfig;
-
-      const fd = getFieldData(w, h, radius, planes);
-      if (!fd) return;
-
-      const scale = fd.scale;
-      const cw = fd.width;
-      const ch = fd.height;
-
-      if (this.refractCanvasEl.width !== cw || this.refractCanvasEl.height !== ch) {
-        this.refractCanvasEl.width = cw;
-        this.refractCanvasEl.height = ch;
-        this.refractCtx = this.refractCanvasEl.getContext("2d");
-        this.outImg = null;
-      } else if (!this.refractCtx) {
-        this.refractCtx = this.refractCanvasEl.getContext("2d");
-      }
-      if (!this.refractCtx) return;
-
-      const pad = Math.ceil(amount * (1 + dispersion) + 4);
-      const regW = w + pad * 2;
-      const regH = h + pad * 2;
-      const srcW = Math.max(1, Math.round(regW * scale));
-      const srcH = Math.max(1, Math.round(regH * scale));
-
-      if (!sharedScratchCanvas) {
-        sharedScratchCanvas = document.createElement("canvas");
-        sharedScratchCtx = sharedScratchCanvas.getContext("2d", { willReadFrequently: true });
-      }
-      if (sharedScratchCanvas.width < srcW) sharedScratchCanvas.width = srcW;
-      if (sharedScratchCanvas.height < srcH) sharedScratchCanvas.height = srcH;
-
-      rasterizeDOMRegion(sharedScratchCtx, rect.left - pad, rect.top - pad, regW, regH, scale);
-      const srcImg = sharedScratchCtx.getImageData(0, 0, srcW, srcH);
-      const srcData = srcImg.data;
-
-      if (blur > 0) {
-        const blurRad = Math.max(1, Math.round(blur * scale * 0.95));
-        blurRgbaBuffer(srcData, srcW, srcH, blurRad);
-      }
-
-      if (!this.outImg || this.outImg.width !== cw || this.outImg.height !== ch) {
-        this.outImg = this.refractCtx.createImageData(cw, ch);
-      }
-      const outData = this.outImg.data;
-      const fData = fd.data;
-      const lut = getToneLUT(material, appearance, nested);
-
-      const sBase = amount * 2 * scale;
-      const sR = sBase * (1 + dispersion);
-      const sG = sBase;
-      const sB = sBase * (1 - dispersion);
-      const padPx = pad * scale;
-      const maxX = srcW - 1;
-      const maxY = srcH - 1;
-      const body = material === "regular" ? 0.78 : 0.68;
-      const rest = 1 - body;
-
-      for (let py = 0; py < ch; py++) {
-        const rowOff = py * cw;
-        const baseY = padPx + py;
-        for (let px = 0; px < cw; px++) {
-          const idx = (rowOff + px) * 4;
-          const fA = fData[idx + 3];
-          if (fA === 0) {
-            outData[idx + 3] = 0;
-            continue;
-          }
-
-          const nx = (fData[idx] - 128) / 254;
-          const ny = (fData[idx + 1] - 128) / 254;
-          const baseX = padPx + px;
-
-          const xR = Math.max(0, Math.min(maxX, (baseX + nx * sR + 0.5) | 0));
-          const yR = Math.max(0, Math.min(maxY, (baseY + ny * sR + 0.5) | 0));
-          const xG = Math.max(0, Math.min(maxX, (baseX + nx * sG + 0.5) | 0));
-          const yG = Math.max(0, Math.min(maxY, (baseY + ny * sG + 0.5) | 0));
-          const xB = Math.max(0, Math.min(maxX, (baseX + nx * sB + 0.5) | 0));
-          const yB = Math.max(0, Math.min(maxY, (baseY + ny * sB + 0.5) | 0));
-
-          let r = lut[srcData[(yR * srcW + xR) * 4]];
-          let g = lut[srcData[(yG * srcW + xG) * 4 + 1]];
-          let b = lut[srcData[(yB * srcW + xB) * 4 + 2]];
-
-          if (tintRGB) {
-            const lum = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-            const a = body + rest * lum;
-            r = Math.min(255, (tintRGB[0] * a * 255 + 0.5) | 0);
-            g = Math.min(255, (tintRGB[1] * a * 255 + 0.5) | 0);
-            b = Math.min(255, (tintRGB[2] * a * 255 + 0.5) | 0);
-          }
-
-          outData[idx] = r;
-          outData[idx + 1] = g;
-          outData[idx + 2] = b;
-          outData[idx + 3] = fA;
-        }
-      }
-
-      this.refractCtx.putImageData(this.outImg, 0, 0);
     }
 
     dispose() {
@@ -1972,8 +1290,6 @@
         this.heldFilter = null;
       }
       this.lensEl.remove();
-      this.refractCanvasEl.remove();
-      this.bezelEl.remove();
       this.overlayEl.remove();
       this.fillEl.remove();
       this.glowEl.remove();
@@ -1990,39 +1306,6 @@
   // --------------------------------------------------------------------------
   const instances = new Map();
   const mq = window.matchMedia(MOBILE_QUERY);
-  let refractRaf = 0;
-  let burstEndTime = 0;
-
-  function updateAllRefractions() {
-    refractRaf = 0;
-    if (!mq.matches) return;
-    for (const inst of instances.values()) {
-      if (inst.refractConfig) {
-        inst.renderRefraction();
-      }
-    }
-    if (performance.now() < burstEndTime) {
-      refractRaf = requestAnimationFrame(updateAllRefractions);
-    }
-  }
-
-  function scheduleRefractUpdate(burstMs = 0) {
-    if (!mq.matches) return;
-    if (burstMs > 0) {
-      burstEndTime = Math.max(burstEndTime, performance.now() + burstMs);
-    }
-    let hasCanvasRefract = false;
-    for (const inst of instances.values()) {
-      if (inst.refractConfig) {
-        hasCanvasRefract = true;
-        break;
-      }
-    }
-    if (!hasCanvasRefract) return;
-    if (!refractRaf) {
-      refractRaf = requestAnimationFrame(updateAllRefractions);
-    }
-  }
 
   function currentAppearance() {
     return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
@@ -2176,21 +1459,11 @@
         inst.measure();
       }
     }
-    scheduleRefractUpdate(360);
   }
 
   function init() {
     sync();
     mq.addEventListener("change", sync);
-
-    // Real-time 60fps updates for WebKit / iOS Safari pixel-displacement refraction
-    window.addEventListener("scroll", () => scheduleRefractUpdate(0), {
-      passive: true,
-      capture: true,
-    });
-    window.addEventListener("resize", () => scheduleRefractUpdate(120), { passive: true });
-    document.addEventListener("click", () => scheduleRefractUpdate(380), { passive: true });
-    document.addEventListener("input", () => scheduleRefractUpdate(120), { passive: true });
 
     // Watch theme changes on <html data-theme="...">
     const themeObserver = new MutationObserver(() => sync());
@@ -2203,14 +1476,6 @@
   window.LiquidGlass = {
     sync,
     refresh: () => requestAnimationFrame(sync),
-    updateRefraction: () => updateAllRefractions(),
-    setMode(mode) {
-      for (const inst of instances.values()) {
-        inst.mode = mode === "auto" ? detectMode() : mode;
-        inst.measure();
-      }
-      updateAllRefractions();
-    },
   };
 
   if (document.readyState === "loading") {
