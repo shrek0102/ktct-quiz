@@ -836,7 +836,7 @@
       set(press, 0, springs.release);
       set(tx, 0, springs.release);
       set(ty, 0, springs.release);
-      set(glow, hovering ? 0.35 : 0, springs.glow);
+      set(glow, 0, springs.glow);
     }
     function down(event) {
       if (claimed.has(event) || event.button !== 0 || isDisabled(element)) return;
@@ -862,11 +862,8 @@
       view.addEventListener("pointerup", release);
       view.addEventListener("pointercancel", release);
     }
-    function hover(event) {
-      if (event.pointerType === "touch" || !view.matchMedia(HOVER_QUERY).matches) return;
-      hovering = event.type !== "pointerleave";
-      if (hovering) light(event.clientX, event.clientY);
-      if (!pointer && !keyboard) set(glow, hovering ? 0.35 : 0, springs.glow);
+    function hover() {
+      // Mobile-only: không giữ hiệu ứng hover sau khi chạm
     }
     function key(event) {
       if (event.key !== " " && event.key !== "Enter") return;
@@ -882,7 +879,7 @@
       } else if (keyboard) {
         keyboard = false;
         set(press, 0, springs.release);
-        set(glow, hovering ? 0.35 : 0, springs.glow);
+        set(glow, 0, springs.glow);
       }
     }
     function drag(event) {
